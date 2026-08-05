@@ -306,26 +306,45 @@
 - **跟 §12 测试隔离一致**: 测试在 worktree 跑 + 复制 `data/` 从主仓, 不污染 live DB
 - 改下单管理必查 §5.35 列出的所有引用点
 
-### 2.13 officev2 树形 A8066781.3 line 3→2 调整 (2026-08-05 拍板)
+### 2.13 officev2 树形 line 调整 (2026-08-05 拍板, A8066781.3 + A8940454.1)
 
-- **业务**: 用户 (2026-08-05) 反馈 "应该是 L3~28"。officev2 原图 A8066781.3 (万陵洋) 标 `parent=A8727123.1 / line=3`, 走 5 叉 own 公式 gnode=10142; 但跟 tree 公式 (L1 严格按位反转 2,4,3,5) 衔接不上, 期望 gnode=28 (走 `2*parent_bfs + (line-1) = 2*3 + 1 = 7`, bit_reverse 7 → L3 公式 14+14=28)
+- **业务**: 用户 (2026-08-05) 反馈两节点 gnode 不在 tree 公式:
+  - A8066781.3 (万陵洋) 应是 L3~28, 实际 L3~10142 (5 叉 own 公式)
+  - A8940454.1 (曾意华) 应是 L3~23, 实际 L3~10149 (5 叉 own 公式)
 - **业务规则 (用户拍板)**: 改 officev2 树形 (parent + line) 对齐 tree 公式
   - 牺牲 officev2 原图的 line 编号
-  - 换 tree 公式一致性 (L1 严格按位反转、L2/L3 走 `2*parent_bfs + (line-1)`)
-  - 未来 officev2 树形 (JSON source) 跟 DB parent_line_id 不一致时, **DB 为准**
+  - 换 tree 公式一致性 (L1 严格按位反转 2,4,3,5、L2/L3 走 `2*parent_bfs + (line-1)`)
+  - 未来 officev2 树形 (JSON source) 跟 DB parent_line_id 不一致时, **DB 为准** (source of truth)
 - **DB 改动 (gitignored, 不入 commit)**:
-  - `original_tree_nodes.parent_line_id`: A8066781.3 = 3 → 2
-  - 重跑 `python tools/migrate_global_node_id.py` → gnode 10142 → 28
-- **业务影响 (验证, A8727123.1 children 变化)**:
-  - A8727123.1 (L2, bfs=3, gnode=7) 现在有 2 个孩子:
-    - line=1: N6050065.1 gnode=20 (L3~20, 2*3+0=6, bit_reverse=4, L3=14+4=18... 实际 20 是 PR #24 5 叉 own 公式, 见 §5.32)
-    - line=2: A8066781.3 gnode=28 (L3~28, 2*3+1=7, bit_reverse(7,4)=14, L3=14+14=28) ✓
-  - A8066781.3 现在有 2 个孩子 (line 1 + 2): N6068614.1 (gnode=40) + N6068612.1 (gnode=56)
+  - A8066781.3: `parent_line_id` 3 → 2 (parent 保持 A8727123.1, gnode 10142 → 28)
+  - A8940454.1: `parent_line_id` 5 → 2 (parent 保持 A8779213.1, gnode 10149 → 23)
+  - 重跑 `python tools/migrate_global_node_id.py`
+- **A8066781.3 公式验证 (L3 bfs=9)**:
+  - parent L2 bfs (A8727123.1) = 3
+  - L3 bfs = 2*3 + (2-1) = 7
+  - bit_reverse(7, 4) = 14 (7=0111 reversed=1110=14)
+  - gnode = L3 first=14 + 14 = 28 ✓
+- **A8940454.1 公式验证 (L3 bfs=9)**:
+  - parent L2 bfs (A8779213.1) = 4
+  - L3 bfs = 2*4 + (2-1) = 9
+  - bit_reverse(9, 4) = 9 (9=1001 palindrome)
+  - gnode = L3 first=14 + 9 = 23 ✓
+- **业务影响 (验证, 2 个 L2 节点 children 变化)**:
+  - A8727123.1 (L2, bfs=3, gnode=7) 现在有 2 个孩子 (line=1+2):
+    - line=1: N6050065.1 gnode=20
+    - line=2: A8066781.3 gnode=28 ✓
+  - A8779213.1 (L2, bfs=4, gnode=11) 现在有 2 个孩子 (line=1+2):
+    - line=1: A9149507.1 gnode=15
+    - line=2: A8940454.1 gnode=23 ✓
 - **关键决策**:
-  - **A8066781.3 line=2 是 tree 公式的"正确"位置**: bit_reverse(7, 4) = 14, 严格按位反转
-  - **officev2 原图 line=3 不被采用**: 即使 officev2 源头 line=3, tree 公式要求 line ∈ {1,2} (L1 root eff=2 限制)
+  - **line=2 是 tree 公式的"正确"位置**: bit_reverse 严格按位反转, L1 root eff=2 限制 line ∈ {1,2}
+  - **officev2 原图 line=3/5 不被采用**: 即使 officev2 源头 line=3, tree 公式要求 line ∈ {1,2}
   - **DB 是 source of truth**: officev2 JSON 是参考, DB parent_line_id 是算法输入
   - **跟 §5.32 + §5.34 教训一致**: 算法层 gnode 跟 DB 严格对齐, 业务术语"1 区/2 区"指 5 子区递归累加
+- **改动避坑 (改前先验证 bfs)**:
+  - 改 parent_line_id 前, 用 `tools/migrate_global_node_id.py` 算法反算 L2/L3 bfs 顺序
+  - 同一个 parent_id 不同 line 算出的 bfs 跟 sort 顺序 (parent_bfs, line) 强相关
+  - 错选 parent 会算出错的 gnode (eg A9092386.1 bfs=2 → gnode=24, 不是 23)
 - 改 officev2 树形 (line 调整) 必查 §5.32 + §5.34 列出的所有引用点
 
 ### 2.10a 子区 PV 递归累加 (PR #66 拍板, 2026-07-23, **被 PR #68 翻案**)

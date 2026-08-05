@@ -306,6 +306,28 @@
 - **跟 §12 测试隔离一致**: 测试在 worktree 跑 + 复制 `data/` 从主仓, 不污染 live DB
 - 改下单管理必查 §5.35 列出的所有引用点
 
+### 2.13 officev2 树形 A8066781.3 line 3→2 调整 (2026-08-05 拍板)
+
+- **业务**: 用户 (2026-08-05) 反馈 "应该是 L3~28"。officev2 原图 A8066781.3 (万陵洋) 标 `parent=A8727123.1 / line=3`, 走 5 叉 own 公式 gnode=10142; 但跟 tree 公式 (L1 严格按位反转 2,4,3,5) 衔接不上, 期望 gnode=28 (走 `2*parent_bfs + (line-1) = 2*3 + 1 = 7`, bit_reverse 7 → L3 公式 14+14=28)
+- **业务规则 (用户拍板)**: 改 officev2 树形 (parent + line) 对齐 tree 公式
+  - 牺牲 officev2 原图的 line 编号
+  - 换 tree 公式一致性 (L1 严格按位反转、L2/L3 走 `2*parent_bfs + (line-1)`)
+  - 未来 officev2 树形 (JSON source) 跟 DB parent_line_id 不一致时, **DB 为准**
+- **DB 改动 (gitignored, 不入 commit)**:
+  - `original_tree_nodes.parent_line_id`: A8066781.3 = 3 → 2
+  - 重跑 `python tools/migrate_global_node_id.py` → gnode 10142 → 28
+- **业务影响 (验证, A8727123.1 children 变化)**:
+  - A8727123.1 (L2, bfs=3, gnode=7) 现在有 2 个孩子:
+    - line=1: N6050065.1 gnode=20 (L3~20, 2*3+0=6, bit_reverse=4, L3=14+4=18... 实际 20 是 PR #24 5 叉 own 公式, 见 §5.32)
+    - line=2: A8066781.3 gnode=28 (L3~28, 2*3+1=7, bit_reverse(7,4)=14, L3=14+14=28) ✓
+  - A8066781.3 现在有 2 个孩子 (line 1 + 2): N6068614.1 (gnode=40) + N6068612.1 (gnode=56)
+- **关键决策**:
+  - **A8066781.3 line=2 是 tree 公式的"正确"位置**: bit_reverse(7, 4) = 14, 严格按位反转
+  - **officev2 原图 line=3 不被采用**: 即使 officev2 源头 line=3, tree 公式要求 line ∈ {1,2} (L1 root eff=2 限制)
+  - **DB 是 source of truth**: officev2 JSON 是参考, DB parent_line_id 是算法输入
+  - **跟 §5.32 + §5.34 教训一致**: 算法层 gnode 跟 DB 严格对齐, 业务术语"1 区/2 区"指 5 子区递归累加
+- 改 officev2 树形 (line 调整) 必查 §5.32 + §5.34 列出的所有引用点
+
 ### 2.10a 子区 PV 递归累加 (PR #66 拍板, 2026-07-23, **被 PR #68 翻案**)
 
 - **业务**: 用户截图 (2026-07-23) 反馈 4 member 树 ABCD 算出 root own=150 PV, 期望 300 PV

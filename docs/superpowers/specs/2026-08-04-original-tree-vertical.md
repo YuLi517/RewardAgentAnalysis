@@ -175,7 +175,7 @@ Unchanged from PR #13. Same try/catch wrappers, same degradation rules, same Res
 
 ### 8.2 Manual verification
 
-Open `http://127.0.0.1:28080/original-tree` (or worktree port) and verify:
+Open `http://127.0.0.1:38080/original-tree` (or worktree port) and verify:
 - Root at top center
 - 4 L1 children in a horizontal row below root
 - Each L1 child's subtree expanding downward

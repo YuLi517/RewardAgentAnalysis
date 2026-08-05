@@ -8,7 +8,7 @@ Verifies:
 - 0 JS console errors throughout
 
 Usage: python tests/test_original_tree_minimap.py
-(Requires 28081 server running the worktree code.)
+(Requires 38081 server running the worktree code.)
 """
 import subprocess
 import sys
@@ -22,7 +22,7 @@ const { chromium } = require('C:\\Users\\rainc\\AppData\\Roaming\\npm\\node_modu
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28081/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38081/original-tree', { waitUntil: 'networkidle' });
 
   // 1. Layout
   const layout = await p.evaluate(() => {

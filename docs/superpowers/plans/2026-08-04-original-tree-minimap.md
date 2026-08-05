@@ -26,7 +26,7 @@ No backend, no DB, no API changes. JSON fixture is read-only via existing `GET /
 
 ---
 
-## Task 1: Worktree setup + 28081 server up
+## Task 1: Worktree setup + 38081 server up
 
 **Files:**
 - Create: `.worktrees/feat-original-tree-minimap/`
@@ -48,17 +48,17 @@ Copy-Item data\rewarddb.db .worktrees\feat-original-tree-minimap\data\rewarddb.d
 ```
 Expected: all three files present in worktree. `git status` in worktree shows clean (data is gitignored).
 
-- [ ] **Step 3: Start uvicorn on port 28081 in the worktree**
+- [ ] **Step 3: Start uvicorn on port 38081 in the worktree**
 ```powershell
 cd .worktrees\feat-original-tree-minimap
-Start-Process python -ArgumentList "-m uvicorn main:app --port 28081 --log-level info" `
+Start-Process python -ArgumentList "-m uvicorn main:app --port 38081 --log-level info" `
   -WorkingDirectory "$PWD" `
   -RedirectStandardOutput "$env:TEMP\uvicorn_minimap.log" `
   -RedirectStandardError "$env:TEMP\uvicorn_minimap.err.log" `
   -NoNewWindow
 Start-Sleep -Seconds 5
 ```
-Expected: `python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:28081/api/original_tree/data', timeout=5).read()[:80])"` prints JSON bytes (not connection error).
+Expected: `python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:38081/api/original_tree/data', timeout=5).read()[:80])"` prints JSON bytes (not connection error).
 
 - [ ] **Step 4: Smoke test the existing /original-tree page**
 Run via Playwright (headless, no save):
@@ -70,7 +70,7 @@ const { chromium } = require('C:\\Users\\rainc\\AppData\\Roaming\\npm\\node_modu
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28081/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38081/original-tree', { waitUntil: 'networkidle' });
   const stats = await p.evaluate(() => ({
     total: document.getElementById('statTotal')?.textContent,
     depth: document.getElementById('statDepth')?.textContent,
@@ -245,7 +245,7 @@ const { chromium } = require('C:\\Users\\rainc\\AppData\\Roaming\\npm\\node_modu
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28081/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38081/original-tree', { waitUntil: 'networkidle' });
   const layout = await p.evaluate(() => {
     const main = document.querySelector('.main-view-panel');
     const mini = document.getElementById('minimapPanel');
@@ -366,7 +366,7 @@ const { chromium } = require('C:\\Users\rainc\\AppData\\Roaming\\npm\\node_modul
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28081/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38081/original-tree', { waitUntil: 'networkidle' });
   const state = await p.evaluate(() => ({
     scale: window.viewportState?.scale,
     naturalW: window.viewportState?.naturalW,
@@ -530,7 +530,7 @@ function minimapLayout(root) {
 
 - [ ] **Step 2: Verify with console log (browser dev tools OR Playwright)**
 
-In the browser, open `http://127.0.0.1:28081/original-tree`, then in the console:
+In the browser, open `http://127.0.0.1:38081/original-tree`, then in the console:
 ```javascript
 const d = await (await fetch('/api/original_tree/data')).json();
 const layout = minimapLayout(d);
@@ -667,7 +667,7 @@ const { chromium } = require('C:\\Users\rainc\\AppData\\Roaming\\npm\\node_modul
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28081/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38081/original-tree', { waitUntil: 'networkidle' });
   const minimap = await p.evaluate(() => {
     const svg = document.getElementById('minimapSvg');
     return {
@@ -764,7 +764,7 @@ const { chromium } = require('C:\\Users\rainc\\AppData\\Roaming\\npm\\node_modul
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28081/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38081/original-tree', { waitUntil: 'networkidle' });
   // 1. 初始蓝框存在
   const initial = await p.evaluate(() => {
     const box = document.querySelector('.minimap-viewport-box');
@@ -952,7 +952,7 @@ const { chromium } = require('C:\\Users\rainc\\AppData\\Roaming\\npm\\node_modul
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28081/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38081/original-tree', { waitUntil: 'networkidle' });
   // 1. 拿一个 minimap 节点的 distId
   const distId = await p.evaluate(() => {
     const node = document.querySelector('.minimap-node');
@@ -1154,7 +1154,7 @@ const { chromium } = require('C:\\Users\rainc\\AppData\\Roaming\\npm\\node_modul
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28081/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38081/original-tree', { waitUntil: 'networkidle' });
   const stats = await p.evaluate(() => ({
     rectCount: document.querySelectorAll('.minimap-node').length,
     boxExists: !!document.querySelector('.minimap-viewport-box'),
@@ -1226,7 +1226,7 @@ const { chromium } = require('C:\\Users\\rainc\\AppData\\Roaming\\npm\\node_modu
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28081/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38081/original-tree', { waitUntil: 'networkidle' });
 
   // 1. Layout
   const layout = await p.evaluate(() => {
@@ -1333,7 +1333,7 @@ If the test fails, do NOT proceed — debug the failing check (the `errs` array 
 
 - [ ] **Step 3: Manual smoke test**
 
-Open `http://127.0.0.1:28081/original-tree` in a browser. Verify:
+Open `http://127.0.0.1:38081/original-tree` in a browser. Verify:
 - Minimap on the right shows 303 small colored rects
 - Main view on the left unchanged
 - Pan/zoom the main view → blue box in minimap follows
@@ -1343,8 +1343,8 @@ Open `http://127.0.0.1:28081/original-tree` in a browser. Verify:
 
 - [ ] **Step 4: Stop worktree server, commit test, push, PR**
 ```powershell
-# 1. Stop 28081
-Get-NetTCPConnection -LocalPort 28081 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+# 1. Stop 38081
+Get-NetTCPConnection -LocalPort 38081 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
 # 2. Commit test
 git add tests/test_original_tree_minimap.py
 git commit -F C:\Users\rainc\AppData\Local\Temp\commit_t9.txt

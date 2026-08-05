@@ -161,7 +161,7 @@ CLI 输出表格(`run_demo_bitrev`):
 ### 3. HTTP API(前端 / Agent 集成)
 
 ```bash
-curl -X POST http://localhost:28080/skills/skill_5_3/batch/run \
+curl -X POST http://localhost:38080/skills/skill_5_3/batch/run \
   -H "Content-Type: application/json" \
   -d '{
     "members": [

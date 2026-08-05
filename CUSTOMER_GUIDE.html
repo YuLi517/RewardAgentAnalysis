@@ -216,14 +216,14 @@ strong { color: var(--tsb); font-weight: 600; }
 <li><strong>运营/管理者</strong>: 看 commission preview, 看历史结算记录, 重置测试数据</li>
 </ul>
 <h3 id="13">1.3 浏览器访问</h3>
-<p>启动后访问 <a href="http://localhost:28080">http://localhost:28080</a>, 看到<strong>欢迎屏</strong> + 4 个功能卡片 (成员/树视图/批量/管理).</p>
+<p>启动后访问 <a href="http://localhost:38080">http://localhost:38080</a>, 看到<strong>欢迎屏</strong> + 4 个功能卡片 (成员/树视图/批量/管理).</p>
 <hr />
 <h2 id="2-5">2. 5 分钟上手</h2>
 <h3 id="21-windows">2.1 启动 (Windows)</h3>
 <ol>
 <li>双击 <code>start_uvicorn.bat</code></li>
-<li>等 3-5 秒, 看到 <code>Uvicorn running on http://0.0.0.0:28080</code> 就 OK</li>
-<li>浏览器打开 <a href="http://localhost:28080">http://localhost:28080</a></li>
+<li>等 3-5 秒, 看到 <code>Uvicorn running on http://0.0.0.0:38080</code> 就 OK</li>
+<li>浏览器打开 <a href="http://localhost:38080">http://localhost:38080</a></li>
 </ol>
 <blockquote>
 <p>提示: 首次启动会自动建 <code>data/rewarddb.db</code> (SQLite 数据库), 不用手工建.</p>
@@ -232,10 +232,10 @@ strong { color: var(--tsb); font-weight: 600; }
 <pre><code class="language-bash">cd RewardAgentAnalysis
 pip install -r requirements.txt
 python main.py
-# 浏览器打开 http://localhost:28080
+# 浏览器打开 http://localhost:38080
 </code></pre>
 <h3 id="23">2.3 验证启动</h3>
-<p>打开 <a href="http://localhost:28080">http://localhost:28080</a>, 应该看到:<br />
+<p>打开 <a href="http://localhost:38080">http://localhost:38080</a>, 应该看到:<br />
 - 欢迎屏 (大标题 "RewardAgentAnalysis")<br />
 - 4 个功能卡片<br />
 - 顶部状态栏: 当前业务周 + 状态 (open/settled)</p>
@@ -567,9 +567,9 @@ cp data/rewarddb.db backup/rewarddb_2026-07-21.db
 </code></pre>
 <p><strong>方式 2: 导出 JSON</strong> (跨平台)</p>
 <pre><code class="language-bash"># 浏览器打开
-http://localhost:28080/api/admin/tables/members
-http://localhost:28080/api/admin/tables/pv_ledger
-http://localhost:28080/api/admin/tables/commission_periods
+http://localhost:38080/api/admin/tables/members
+http://localhost:38080/api/admin/tables/pv_ledger
+http://localhost:38080/api/admin/tables/commission_periods
 # 另存为 JSON 文件
 </code></pre>
 <p><strong>方式 3: 工具栏导出</strong> (后续 PR)</p>
@@ -588,11 +588,11 @@ cp backup/rewarddb_2026-07-21.db data/rewarddb.db
 <hr />
 <h2 id="8">8. 故障排查</h2>
 <h3 id="81-address-already-in-use">8.1 启动失败: "Address already in use"</h3>
-<p><strong>原因</strong>: 28080 端口被占用<br />
+<p><strong>原因</strong>: 38080 端口被占用<br />
 <strong>解决</strong>:</p>
 <pre><code class="language-bash"># 找出占用进程
-netstat -ano | findstr :28080    # Windows
-lsof -i :28080                    # macOS/Linux
+netstat -ano | findstr :38080    # Windows
+lsof -i :38080                    # macOS/Linux
 
 # 停掉, 或换端口启动
 python main.py --port 8001
@@ -722,7 +722,7 @@ python main.py --port 8001
 </table>
 <h3 id="c">C. 默认配置</h3>
 <ul>
-<li><strong>Server</strong>: <code>0.0.0.0:28080</code></li>
+<li><strong>Server</strong>: <code>0.0.0.0:38080</code></li>
 <li><strong>DB</strong>: <code>data/rewarddb.db</code> (SQLite, gitignored)</li>
 <li><strong>期间</strong>: 业务周 Sun-Fri (PR #55)</li>
 <li><strong>角色</strong>: 7 个 (PR #42)</li>

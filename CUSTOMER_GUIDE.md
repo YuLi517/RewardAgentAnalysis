@@ -43,7 +43,7 @@ RewardAgentAnalysis 是一个**网体 member/commission 管理系统**, 用 5 �
 
 ### 1.3 浏览器访问
 
-启动后访问 <http://localhost:28080>, 看到**欢迎屏** + 4 个功能卡片 (成员/树视图/批量/管理).
+启动后访问 <http://localhost:38080>, 看到**欢迎屏** + 4 个功能卡片 (成员/树视图/批量/管理).
 
 ---
 
@@ -52,8 +52,8 @@ RewardAgentAnalysis 是一个**网体 member/commission 管理系统**, 用 5 �
 ### 2.1 启动 (Windows)
 
 1. 双击 `start_uvicorn.bat`
-2. 等 3-5 秒, 看到 `Uvicorn running on http://0.0.0.0:28080` 就 OK
-3. 浏览器打开 <http://localhost:28080>
+2. 等 3-5 秒, 看到 `Uvicorn running on http://0.0.0.0:38080` 就 OK
+3. 浏览器打开 <http://localhost:38080>
 
 > 提示: 首次启动会自动建 `data/rewarddb.db` (SQLite 数据库), 不用手工建.
 
@@ -63,12 +63,12 @@ RewardAgentAnalysis 是一个**网体 member/commission 管理系统**, 用 5 �
 cd RewardAgentAnalysis
 pip install -r requirements.txt
 python main.py
-# 浏览器打开 http://localhost:28080
+# 浏览器打开 http://localhost:38080
 ```
 
 ### 2.3 验证启动
 
-打开 <http://localhost:28080>, 应该看到:
+打开 <http://localhost:38080>, 应该看到:
 - 欢迎屏 (大标题 "RewardAgentAnalysis")
 - 4 个功能卡片
 - 顶部状态栏: 当前业务周 + 状态 (open/settled)
@@ -86,7 +86,7 @@ python main.py
 
 ### 2.5 首次部署：导入原版网体数据 (PR #17)
 
-启动 server 后, 数据库是空的 (只有 schema, 没有原版网体节点). 访问 `http://localhost:28080/original-tree` 会看到 "API 数据空" 错误.
+启动 server 后, 数据库是空的 (只有 schema, 没有原版网体节点). 访问 `http://localhost:38080/original-tree` 会看到 "API 数据空" 错误.
 
 **首次部署必跑 1 步**:
 
@@ -408,9 +408,9 @@ cp data/rewarddb.db backup/rewarddb_2026-07-21.db
 **方式 2: 导出 JSON** (跨平台)
 ```bash
 # 浏览器打开
-http://localhost:28080/api/admin/tables/members
-http://localhost:28080/api/admin/tables/pv_ledger
-http://localhost:28080/api/admin/tables/commission_periods
+http://localhost:38080/api/admin/tables/members
+http://localhost:38080/api/admin/tables/pv_ledger
+http://localhost:38080/api/admin/tables/commission_periods
 # 另存为 JSON 文件
 ```
 
@@ -638,8 +638,8 @@ python tools/migrate_original_tree.py --yes
 python main.py
 
 # 5. 浏览器访问
-# http://localhost:28080            # 5 叉树 commission
-# http://localhost:28080/original-tree  # 原版网体
+# http://localhost:38080            # 5 叉树 commission
+# http://localhost:38080/original-tree  # 原版网体
 ```
 
 **换数据集**:
@@ -672,12 +672,12 @@ python tools/migrate_original_tree.py --yes
 
 ### 8.1 启动失败: "Address already in use"
 
-**原因**: 28080 端口被占用
+**原因**: 38080 端口被占用
 **解决**:
 ```bash
 # 找出占用进程
-netstat -ano | findstr :28080    # Windows
-lsof -i :28080                    # macOS/Linux
+netstat -ano | findstr :38080    # Windows
+lsof -i :38080                    # macOS/Linux
 
 # 停掉, 或换端口启动
 python main.py --port 8001
@@ -788,7 +788,7 @@ pip install -r requirements.txt
 
 ### C. 默认配置
 
-- **Server**: `0.0.0.0:28080`
+- **Server**: `0.0.0.0:38080`
 - **DB**: `data/rewarddb.db` (SQLite, gitignored)
 - **期间**: 业务周 Sun-Fri (PR #55)
 - **角色**: 7 个 (PR #42)

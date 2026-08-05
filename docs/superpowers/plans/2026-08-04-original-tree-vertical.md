@@ -24,7 +24,7 @@ No new files, no backend changes.
 
 ---
 
-## Task V0: Worktree setup + 28082 server
+## Task V0: Worktree setup + 38082 server
 
 **Files:**
 - Create: `.worktrees/feat-original-tree-vertical/`
@@ -45,17 +45,17 @@ New-Item -ItemType Directory -Path .worktrees\feat-original-tree-vertical\data -
 Copy-Item data\rewarddb.db .worktrees\feat-original-tree-vertical\data\rewarddb.db
 ```
 
-- [ ] **Step 3: Start uvicorn on port 28082 in the worktree**
+- [ ] **Step 3: Start uvicorn on port 38082 in the worktree**
 ```powershell
 cd .worktrees\feat-original-tree-vertical
-Start-Process python -ArgumentList "-m uvicorn main:app --port 28082 --log-level info" `
+Start-Process python -ArgumentList "-m uvicorn main:app --port 38082 --log-level info" `
   -WorkingDirectory "$PWD" `
   -RedirectStandardOutput "$env:TEMP\uvicorn_vertical.log" `
   -RedirectStandardError "$env:TEMP\uvicorn_vertical.err.log" `
   -NoNewWindow
 Start-Sleep -Seconds 5
 ```
-Verify with `python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:28082/api/original_tree/data', timeout=5).read()[:80])"`.
+Verify with `python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:38082/api/original_tree/data', timeout=5).read()[:80])"`.
 
 - [ ] **Step 4: Capture baseline screenshot (still horizontal at this point)**
 ```javascript
@@ -63,7 +63,7 @@ const { chromium } = require('C:\\Users\\rainc\\AppData\\Roaming\\npm\\node_modu
 (async () => {
   const b = await chromium.launch({ headless: true });
   const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
-  await p.goto('http://127.0.0.1:28082/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38082/original-tree', { waitUntil: 'networkidle' });
   await p.screenshot({ path: 'C:\\Users\\rainc\\AppData\\Local\\Temp\\vertical_baseline.png', fullPage: false });
   await b.close();
 })();
@@ -165,7 +165,7 @@ const { chromium } = require('C:\\Users\\rainc\\AppData\\Roaming\\npm\\node_modu
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28082/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38082/original-tree', { waitUntil: 'networkidle' });
   const layout = await p.evaluate(() => {
     const root = document.querySelector('.tree-node');
     const rootBody = document.querySelector('.tree-node-body');
@@ -309,7 +309,7 @@ const { chromium } = require('C:\\Users\rainc\\AppData\\Roaming\\npm\\node_modul
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28082/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38082/original-tree', { waitUntil: 'networkidle' });
   const minimap = await p.evaluate(() => ({
     rectCount: document.querySelectorAll('.minimap-node').length,
     pathCount: document.querySelectorAll('#minimapSvg path').length,
@@ -413,7 +413,7 @@ subprocess.run(["git", "commit", "-F", str(p)], cwd=r"D:\Projects\Reward\RewardA
 
 - [ ] **Step 1: Re-run the PR #13 e2e test against the worktree port**
 
-Modify the test temporarily to point at port 28082 (or duplicate the test):
+Modify the test temporarily to point at port 38082 (or duplicate the test):
 ```javascript
 const { chromium } = require('C:\\Users\\rainc\\AppData\\Roaming\\npm\\node_modules\\playwright');
 (async () => {
@@ -422,7 +422,7 @@ const { chromium } = require('C:\\Users\\rainc\\AppData\\Roaming\\npm\\node_modu
   const errs = [];
   p.on('pageerror', e => errs.push('pageerror: ' + e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text()); });
-  await p.goto('http://127.0.0.1:28082/original-tree', { waitUntil: 'networkidle' });
+  await p.goto('http://127.0.0.1:38082/original-tree', { waitUntil: 'networkidle' });
 
   // 1. Layout
   const layout = await p.evaluate(() => {
@@ -517,7 +517,7 @@ If no code change, skip. Otherwise commit the test or the production fix.
 
 ---
 
-## Task V5: e2e test + push PR + merge + 28080 restart
+## Task V5: e2e test + push PR + merge + 38080 restart
 
 **Files:**
 - Modify: `tests/test_original_tree_minimap.py` (add root-on-top assertion)
@@ -553,10 +553,10 @@ python tests\test_original_tree_minimap.py
 
 Expected: `OK: all minimap e2e checks passed` (existing message; the new check is silent pass).
 
-- [ ] **Step 3: Stop 28082, commit, push, PR**
+- [ ] **Step 3: Stop 38082, commit, push, PR**
 ```powershell
-# 1. Stop 28082
-Get-NetTCPConnection -LocalPort 28082 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+# 1. Stop 38082
+Get-NetTCPConnection -LocalPort 38082 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
 # 2. Commit test
 git add tests/test_original_tree_minimap.py
 git commit -F C:\Users\rainc\AppData\Local\Temp\commit_v5.txt

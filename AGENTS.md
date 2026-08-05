@@ -79,7 +79,7 @@
   ```bash
   # 浏览器点 "🗑️ 重置" 按钮 + 二次确认
   # 或直接 API:
-  curl -X POST "http://127.0.0.1:28080/api/admin/reset_test_data?confirm=true"
+  curl -X POST "http://127.0.0.1:38080/api/admin/reset_test_data?confirm=true"
   ```
 
 ### 2.2b 成员编码格式 `N5637590.X` (PR #50 拍板, 2026-07-17)
@@ -377,7 +377,7 @@ New-Item -ItemType Directory -Path .worktrees\feat-xxx\data -Force
 Copy-Item data\rewarddb.db .worktrees\feat-xxx\data\rewarddb.db
 ```
 
-**Worktree 内启动 server** (跟主仓 28080 端口不冲突):
+**Worktree 内启动 server** (跟主仓 38080 端口不冲突):
 ```powershell
 cd .worktrees\feat-xxx
 python -c "from database import init_db; init_db()"   # 第一次跑, 后面不用
@@ -387,8 +387,8 @@ Start-Process python -ArgumentList "-m uvicorn main:app --port 8001 --log-level 
 ```
 
 **Port 管理**:
-- 主仓: 28080
-- Worktree 测试: 28081-28088 (互不冲突, 同时跑多个 worktree)
+- 主仓: 38080
+- Worktree 测试: 38081-38088 (互不冲突, 同时跑多个 worktree)
 
 **清理** (PR merge 后):
 ```powershell
@@ -450,21 +450,21 @@ gh pr merge <num> --squash --delete-branch
 git pull origin main  # main fast-forward
 ```
 
-### 3.4 重启主仓 28080 server
+### 3.4 重启主仓 38080 server
 
-PR merge 后必须重启主仓 28080 server 加载新代码:
+PR merge 后必须重启主仓 38080 server 加载新代码:
 ```powershell
-# 1. 停 28080
-Get-NetTCPConnection -LocalPort 28080 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+# 1. 停 38080
+Get-NetTCPConnection -LocalPort 38080 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
 Start-Sleep -Seconds 2
-# 2. 启 28080
+# 2. 启 38080
 cd D:\Projects\Reward\RewardAgentAnalysis
-Start-Process python -ArgumentList "-m uvicorn main:app --port 28080 --log-level info" `
+Start-Process python -ArgumentList "-m uvicorn main:app --port 38080 --log-level info" `
   -WorkingDirectory "$PWD" -RedirectStandardOutput "$env:TEMP\uvicorn_main.log" `
   -RedirectStandardError "$env:TEMP\uvicorn_main.err.log" -NoNewWindow
 Start-Sleep -Seconds 5
 # 3. 验证
-python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:28080/api/members', timeout=5).read()[:200])"
+python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:38080/api/members', timeout=5).read()[:200])"
 ```
 
 ---
@@ -1411,7 +1411,7 @@ cd .worktrees\feat-xxx; python -m pytest tests/ -v
 Get-Content "$env:TEMP\uvicorn_xxx.err.log" -Tail 30
 
 # 拉数据
-python -c "import urllib.request, json; print(json.dumps(json.loads(urllib.request.urlopen('http://127.0.0.1:28080/api/members', timeout=5).read()), ensure_ascii=False, indent=2))" > peek.json
+python -c "import urllib.request, json; print(json.dumps(json.loads(urllib.request.urlopen('http://127.0.0.1:38080/api/members', timeout=5).read()), ensure_ascii=False, indent=2))" > peek.json
 
 # 看 SQLite
 python -c "import sqlite3; c=sqlite3.connect(r'D:\Projects\Reward\RewardAgentAnalysis\data\rewarddb.db'); print(list(c.execute('SELECT * FROM members').fetchall()))"
@@ -1580,7 +1580,7 @@ print(raw.split(b'\n\n', 1)[-1].decode('utf-8'))
 
 - `tests/test_write_to_disk.py` 9 ERROR — 依赖 gitignored `json/Tree_empty_5_3.json` fixture
 - GitHub push 经常 connection reset — 重试即可
-- 28080 server 偶尔 Stop-Process 失败 (Idle PID 0) — 忽略, 端口 TimeWait 后会释放
+- 38080 server 偶尔 Stop-Process 失败 (Idle PID 0) — 忽略, 端口 TimeWait 后会释放
 - SQLite Windows 文件锁 — worktree 跟主仓同时跑 server 可能撞, 一般 port 区分就好
 
 ---

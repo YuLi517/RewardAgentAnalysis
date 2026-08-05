@@ -30,8 +30,8 @@ python tools/migrate_original_tree.py --yes
 # 客户首次部署或换 JSON 数据集时跑 (幂等, 多次跑安全)
 
 # 4. 浏览器
-# http://localhost:28080            # 5 叉树 commission 系统
-# http://localhost:28080/original-tree  # 原版网体 (303 节点 12 层, vertical 布局 + minimap)
+# http://localhost:38080            # 5 叉树 commission 系统
+# http://localhost:38080/original-tree  # 原版网体 (303 节点 12 层, vertical 布局 + minimap)
 ```
 
 ### 启用 LLM 路由 (optional)
@@ -92,7 +92,7 @@ cp .env.example .env
 | GET | `/api/original_tree/data` | 原版网体数据 (DB 读, 303 节点 12 层) |
 | GET | `/original-tree` | 原版网体可视化页面 (vertical 布局 + minimap) |
 
-完整 OpenAPI: <http://localhost:28080/docs>
+完整 OpenAPI: <http://localhost:38080/docs>
 
 ---
 
@@ -107,7 +107,7 @@ cp .env.example .env
 
 启动参数:
 - `--host 0.0.0.0` (默认, 监听所有网卡, 局域网可访问)
-- `--port 28080` (默认)
+- `--port 38080` (默认)
 - `--reload` (开发模式, 改代码自动重启)
 
 ---

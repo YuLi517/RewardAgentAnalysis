@@ -121,7 +121,7 @@ Single source of truth for the data; both views re-render from it independently.
 
 ### 8.1 Playwright end-to-end (`tests/test_original_tree_minimap.py` or JS verification script)
 
-- Open `http://127.0.0.1:28080/original-tree`
+- Open `http://127.0.0.1:38080/original-tree`
 - Verify minimap SVG renders with 303 node rects (or fewer if collapsed-rect approach)
 - Verify blue viewport rect exists and has non-zero size
 - Trigger a main-view pan (e.g., simulate wheel event on main SVG)

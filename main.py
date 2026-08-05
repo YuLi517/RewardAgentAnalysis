@@ -37,7 +37,7 @@ RewardAgentAnalysis —— 会话持久化 + 历史回放
     1. pip install -r requirements.txt
     2. cp .env.example .env && 编辑填 API Key
     3. python main.py
-    4. 浏览器 http://localhost:28080
+    4. 浏览器 http://localhost:38080
 """
 
 import os
@@ -475,7 +475,7 @@ class Settings:
     def __init__(self):
         self.max_history = int(os.getenv("MAX_HISTORY", "10"))
         self.host = os.getenv("HOST", "0.0.0.0")
-        self.port = int(os.getenv("PORT", "28080"))
+        self.port = int(os.getenv("PORT", "38080"))
         self.default_temperature = float(os.getenv("DEFAULT_TEMPERATURE", "0.7"))
         self.max_tokens = int(os.getenv("MAX_TOKENS", "2048"))
         self.global_max_retries = int(os.getenv("GLOBAL_MAX_RETRIES", "2"))

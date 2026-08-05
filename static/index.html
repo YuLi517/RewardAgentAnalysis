@@ -8900,7 +8900,7 @@ skillRunBtn.addEventListener('click', async () => {
   } catch (err) {
     // TypeError: Failed to fetch  —— 网络层错误（后端没起 / 跨域 / 断网）
     if (err && (err.name === 'TypeError' || /Failed to fetch/i.test(err.message || ''))) {
-      skillErrorEl.textContent = '无法连接后端（请先在项目目录运行 python main.py 启动服务，监听 http://localhost:28080）';
+      skillErrorEl.textContent = '无法连接后端（请先在项目目录运行 python main.py 启动服务，监听 http://localhost:38080）';
     } else {
       skillErrorEl.textContent = '预计算失败：' + err.message;
     }

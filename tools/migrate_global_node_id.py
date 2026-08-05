@@ -68,8 +68,11 @@ def assign_global_node_ids_for_db(rows):
         }
         bfs_by_level.setdefault(0, {})[r['dist_id']] = 0
 
-    # 3. L1 父 (level=2, 4 个): 按 dist_id 字典序, bfs_pos 0-3
-    l1_rows = sorted(by_level.get(2, []), key=lambda r: r['dist_id'])
+    # 3. L1 父 (level=2, 4 个): 按 officev2 line 排 (parent_line_id 1-4), bfs_pos 0-3
+    #    业务 (2026-08-05 用户拍板): 顺应按位反转排列, line 1 → BFS 0, line 2 → BFS 1, ...
+    #    旧版按 dist_id 字典序排, 但 officev2 line 才是"槽位"语义 (line 1-5), 应按 line 排
+    #    例: 郜翠微 (line 2) BFS pos 1 → gnode 4, 李苗 (line 3) BFS pos 2 → gnode 3
+    l1_rows = sorted(by_level.get(2, []), key=lambda r: (r['parent_line_id'] or 0, r['dist_id']))
     for i, r in enumerate(l1_rows):
         result[r['dist_id']] = {
             'global_node_id': global_node_id_for_bfs_pos(1, i),

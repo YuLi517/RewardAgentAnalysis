@@ -1035,10 +1035,12 @@ def api_original_tree_data(db: DbSession = Depends(get_db)):
     def _attach_children(node):
         """递归把 children_by_parent 的子节点 attach 到 node.children"""
         kids = children_by_parent.get(node["distId"], [])
-        # ★ PR #32: 按 global_node_id 升序排 (NULL 排最后)
-        # 业务规则: L1 父按 N 升序排 (e.g. 郜翠微 N=3 在徐万刚 N=5 左侧)
-        # L2+ 父 N 跟 line 1-2 单调递增, 排序结果跟 line 顺序一致, 无副作用
-        kids.sort(key=lambda c: (c["globalNodeId"] is None, c["globalNodeId"] if c["globalNodeId"] is not None else 0))
+        # ★ 2026-08-05: 按 officev2 line 排 (parent_line_id 1-5) — 等同 BFS bit_reverse 排
+        # 业务: line 1 → BFS 0 → gnode 2, line 2 → BFS 1 → gnode 4, line 3 → BFS 2 → gnode 3, line 4 → BFS 3 → gnode 5
+        # (L1 按位反转排列, 严格 2, 4, 3, 5)
+        # 旧 PR #32 按 global_node_id 升序排 (2, 3, 4, 5) 跟 BFS 排冲突 (BFS 是 2, 4, 3, 5)
+        # 同一 line 多个节点按 gnode 升序排 (defensive, 实际很少见)
+        kids.sort(key=lambda c: (int(c.get("parentLineId") or 0), c["globalNodeId"] if c["globalNodeId"] is not None else 0))
         node["children"] = kids
         for k in kids:
             _attach_children(k)

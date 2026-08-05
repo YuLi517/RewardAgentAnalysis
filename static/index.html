@@ -8297,7 +8297,16 @@ function treeViewExpandAll(btn) {
   const body = root.querySelector('.tree-view-body');
   if (body && typeof relayoutTreeAsSvg === 'function') relayoutTreeAsSvg(body);
   // ★ 2026-07-13 v5: 展开后子树高度变, 重新算 level tag top
-  requestAnimationFrame(() => alignLevelTags(root));
+  // ★ 2026-08-06 PR: 全部展开后, 树自然宽度 (5 叉 9+ 层) 在 100% 缩放下超过 viewport 几十倍
+  //   → L9+ 节点渲染在 body 横向 x=50000+ 位置,用户竖向滚动看不到 (以为"无法继续移动")
+  //   → 自动 fit 到屏幕, 整树一屏可见, 用户能立刻看到 L1-L13 全貌
+  //   → 双重 rAF 确保 282 个 details 的 toggle handler 全部跑完, root.offsetWidth/Height 已稳定
+  requestAnimationFrame(() => {
+    alignLevelTags(root);
+    requestAnimationFrame(() => {
+      if (typeof fitTreeToScreen === 'function') fitTreeToScreen();
+    });
+  });
 }
 function treeViewCollapseAll(btn) {
   const root = btn.closest('.tree-view');
@@ -8310,7 +8319,13 @@ function treeViewCollapseAll(btn) {
   const body = root.querySelector('.tree-view-body');
   if (body && typeof relayoutTreeAsSvg === 'function') relayoutTreeAsSvg(body);
   // ★ 2026-07-13 v5: 折叠后子树高度变, 重新算 level tag top
-  requestAnimationFrame(() => alignLevelTags(root));
+  // ★ 2026-08-06 PR: 折叠后画布很小, 重置 zoom 到 100% 避免上次的 fit 值看起来很怪
+  requestAnimationFrame(() => {
+    alignLevelTags(root);
+    requestAnimationFrame(() => {
+      if (typeof resetTreeZoom === 'function') resetTreeZoom();
+    });
+  });
 }
 
 // ★ 2026-07-12: 节点显示过滤器 — 切到「仅含用户节点」时,隐藏所有 .tv-avail 占位

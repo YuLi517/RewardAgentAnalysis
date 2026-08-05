@@ -1043,10 +1043,16 @@
     if (treeDepth >= 0 && node.globalNodeId != null) {
       const gidSpan = document.createElement('span');
       if (node.is5Own) {
-        // 5 叉 own: 5 叉业务 line 3-5 子, 跟 tree 公式脱钩 (10000+)
+        // ★ 2026-08-05 fix: 5 叉 own 节点 (gnode >= 10000) 保留紫色视觉区分
+        // 但文本统一成 "L{depth}~{gnode}", 不再带 5× 前缀
+        // 原因: 业务是 2 叉 (root eff=2), 显示 "5×" 跟 2 叉业务语义矛盾
+        //   万陵洋 A8066781.3 (gnode=10137) 是 officev2 5 叉 own 历史节点,
+        //   现在挂在 2 叉父方添兰的 line 2 槽 (overflow 补位), 5× 标识会让用户误解
+        //   "这是 5 叉业务 line 3-5 子" — 实际不是
+        // 视觉: 紫色 (#6D28D9 / #EDE9FE / #C4B5FD) 跟普通 tree 公式编号 (灰色) 区分
         gidSpan.className = 'tree-node-globalid five-own';
-        gidSpan.textContent = `L${treeDepth}~5×${node.globalNodeId}`;
-        gidSpan.title = `当前层: L${treeDepth} | 5 叉 own 编号: ${node.globalNodeId}\n5 叉业务 line 3-5 子, BFS 位置超界 tree 公式, 5 叉 own BFS = parent_bfs*5 + line-1\n编号 = 10000 + 5^child_level + 5_own_bfs`;
+        gidSpan.textContent = `L${treeDepth}~${node.globalNodeId}`;
+        gidSpan.title = `当前层: L${treeDepth} | 5 叉 own 编号: ${node.globalNodeId}\n历史 officev2 5 叉业务 line 3-5 子, BFS 位置超界 tree 公式 (1-4093 范围)\n5 叉 own BFS = parent_bfs*5 + line-1, 编号 = 10000 + 5^child_level + 5_own_bfs\n当前业务 2 叉, 节点被划到 2 叉父的 line 2 槽 (overflow 补位)`;
       } else {
         // tree 公式: 跟 tree_l1_4_l10 位反转公式一致 (1-4093)
         gidSpan.className = 'tree-node-globalid real';

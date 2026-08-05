@@ -9,8 +9,10 @@ init_root_member.py —— 一键把根节点 (王常军) 加到 members 表
     - 成员列表期望 10 行 (root + 9 个挂入的成员)
 
 幂等:
-    - 如果 N5637590.1 已经在 members → 跳过
-    - 如果不存在 → INSERT 一行
+    - 如果已存在任何结构化 root (parent_dist_id IS NULL AND slot_line_id 0/NULL) → 跳过
+      ★ 2026-08-05: 改成结构检测, 不再按 distId='N5637590.1' 判断
+      (原树迁入后 root=万陵洋 A8066781.1, 防双 root)
+    - 如果不存在 → INSERT 一行 (N5637590.1 王常军)
 
 字段设置:
     - member_dist_id   = 'N5637590.1'
@@ -35,7 +37,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from database import SessionLocal
 from models import Member
-from repository import MemberRepository
 
 
 ROOT_DIST_ID = "N5637590.1"
@@ -46,8 +47,15 @@ ROOT_CREATED_PERIOD = "2026-W28"  # 比 N-7000001 早 (它是 W29)
 def main():
     db = SessionLocal()
     try:
-        repo = MemberRepository(db)
-        existing = repo.get_by_dist_id(ROOT_DIST_ID)
+        # ★ 2026-08-05: 结构化 root 检测 (不再按 distId 判断)
+        #   任何 (parent_dist_id IS NULL AND (slot_line_id IS NULL OR slot_line_id = 0))
+        #   都算 root — 原树迁入后 root=万陵洋 A8066781.1, 不能再插 N5637590.1 双 root
+        existing = (
+            db.query(Member)
+            .filter(Member.parent_dist_id.is_(None))
+            .filter((Member.slot_line_id.is_(None)) | (Member.slot_line_id == 0))
+            .first()
+        )
         if existing:
             print(f"✓ Root 已在 members (id={existing.id}, name='{existing.member_name}')")
             print(f"  - parent_dist_id    = {existing.parent_dist_id!r}")

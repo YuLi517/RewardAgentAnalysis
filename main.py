@@ -3334,6 +3334,11 @@ def _build_node5_tree_from_db(db) -> Tuple[Node5, Dict[int, str]]:
                           跟 "PREVIEW-N" 负数区分, 跟 root=563759000000001 区分
                           例: N5637590.1 → 563759000000001, N5637590.10 → 563759000000010
           - N-7XXXXXX   → 负数 (跟 root 区分), 保留原 PR #39 行为
+          - A<n>.<k>    → 7_000_000_000_000 + n*100 + k (★ 2026-08-05 原树迁入加)
+                          原树 20 个 A 格式节点 (root=万陵洋 A8066781.1),
+                          旧 fallback int("A8066781") 失败 → uid=0 撞 avail 占位保留值
+                          独立号段 (7×10^12 起), 不跟 N5637590 段 (5.6×10^14) /
+                          N-7 负数段 / N 格式 fallback 裸数字撞号
           - 其他/空     → 0
         """
         did = (m.member_dist_id or "").strip()
@@ -3353,6 +3358,11 @@ def _build_node5_tree_from_db(db) -> Tuple[Node5, Dict[int, str]]:
                 return -int(num_str)
             except ValueError:
                 return 0
+        # ★ 2026-08-05 原树迁入: A<n>.<k> 格式 (e.g. A8066781.1)
+        import re as _re_uid
+        _am = _re_uid.match(r"^A(\d+)\.(\d+)$", did)
+        if _am:
+            return 7_000_000_000_000 + int(_am.group(1)) * 100 + int(_am.group(2))
         # fallback (N-5.../N-6.../空): 跟旧实现一致
         digits = did.lstrip("N").lstrip("n").split(".")[0]
         try:
@@ -4620,6 +4630,51 @@ def api_member_roles_list():
             for k, v in MEMBER_ROLES.items()
         ],
         "default": DEFAULT_ROLE,
+    }
+
+
+# ============================================================
+# ★ 2026-08-05: 给已有成员追加本期 PV (/api/members/add_pv)
+#   业务背景: 原版网体 (original_tree_nodes, 264 节点) 迁入 members 后,
+#   所有成员 current_pv_balance=0, 本期 PV 需要逐个补录 — 这个端点给
+#   任意已有成员追加一条 pending PVLedger (跟新成员挂入的 PV 写法一致),
+#   不动 current_pv_balance (结算时才落账)
+# ============================================================
+class MemberAddPvRequest(BaseModel):
+    member_dist_id: str = Field(..., description="目标成员 distId")
+    pv_amount: int = Field(..., gt=0, description="追加的本期 PV (正整数)")
+    note: Optional[str] = Field(None, description="备注 (可选)")
+
+
+@app.post("/api/members/add_pv")
+def api_member_add_pv(
+    req: MemberAddPvRequest,
+    db: DbSession = Depends(get_db),
+):
+    """给已有成员追加本期 PV (pending ledger, 不动 current_pv_balance)"""
+    member = db.query(Member).filter_by(member_dist_id=req.member_dist_id).first()
+    if member is None:
+        raise HTTPException(404, f"找不到 distId={req.member_dist_id} 的成员")
+    period_id = get_current_period_id()
+    ledger = PVLedger(
+        member_id=member.id,
+        member_dist_id=member.member_dist_id,
+        period_id=period_id,
+        pv_amount=int(req.pv_amount),
+        status="pending",
+        note=req.note,
+    )
+    db.add(ledger)
+    db.commit()
+    db.refresh(ledger)
+    log.info(f"➕ member add_pv: {req.member_dist_id} +{req.pv_amount} PV (period={period_id})")
+    return {
+        "ok": True,
+        "member_dist_id": member.member_dist_id,
+        "member_name": member.member_name or "",
+        "period_id": period_id,
+        "pv_amount": int(req.pv_amount),
+        "ledger_id": ledger.id,
     }
 
 

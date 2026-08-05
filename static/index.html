@@ -1664,6 +1664,16 @@
   .badge-direct {
     display: inline-block; background: #E0F2FE; color: #075985; padding: 1px 7px; border-radius: 9px; font-size: 11px; font-weight: 600;
   }
+  /* ★ 2026-08-05: 成员列表「➕ PV」按钮 (原树迁入后给已有成员追加本期 PV)
+     宋代配色: 主色 #5AA4AE (天水碧), hover 略深, 间距严格 2 倍数 */
+  .btn-add-pv {
+    display: inline-block; background: #5AA4AE; color: #FFFFFF; border: none;
+    padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+    cursor: pointer; transition: background 0.12s; white-space: nowrap;
+  }
+  .btn-add-pv:hover { background: #4A8F99; }
+  .btn-add-pv:active { background: #3D7A83; }
+  .btn-add-pv:focus-visible { outline: 2px solid #5AA4AE; outline-offset: 2px; }
   /* ★ 2026-07-16 PR #41/42: 角色徽章 (name 下方, 居中, 独占一行)
      PR #44: role badge 移到 line 1 (跟 name 同行), 不用 tv-role-row 容器 */
   .tree-view .tv-card .tv-badge-role {
@@ -7430,6 +7440,7 @@ async function quickMembers() {
         <td><code style="font-size:11px;">${escapeHtml(distId)}</code></td>
         <td>${parentDistId ? `<code style="font-size:11px;">${escapeHtml(parentDistId)}</code>` : '-'}</td>
         <td class="num">${lineId != null ? lineId : '-'}</td>
+        <td><button class="btn-add-pv" data-dist="${escapeHtml(distId)}" data-name="${escapeHtml(name)}" title="给 ${escapeHtml(name)} 追加本期 PV">➕ PV</button></td>
       </tr>
     `}).join('');
     modal.querySelector('.quick-modal-body').innerHTML = `
@@ -7445,8 +7456,9 @@ async function quickMembers() {
           <th>distId</th>
           <th>父 distId</th>
           <th>线</th>
+          <th>操作</th>
         </tr></thead>
-        <tbody>${rows || '<tr><td colspan="9" style="text-align:center;color:#9CA3AF;">(无成员)</td></tr>'}</tbody>
+        <tbody>${rows || '<tr><td colspan="10" style="text-align:center;color:#9CA3AF;">(无成员)</td></tr>'}</tbody>
       </table>
       ${members.length > 200 ? `<div style="margin-top:8px;color:#6B7280;font-size:12px;">仅显示前 200 位,共 ${members.length} 位</div>` : ''}
       <div style="margin-top:10px;display:flex;gap:8px;">
@@ -7456,8 +7468,50 @@ async function quickMembers() {
     `;
     modal.querySelector('#qaClose')?.addEventListener('click', closeQuickModal);
     modal.querySelector('#qaAdd')?.addEventListener('click', () => { closeQuickModal(); quickAddMember(); });
+    // ★ 2026-08-05: 每行「➕ PV」按钮 — 给已有成员追加本期 PV (原树迁入后补录用)
+    modal.querySelectorAll('.btn-add-pv').forEach(btn => {
+      btn.addEventListener('click', () => quickAddPvForMember(btn.dataset.dist, btn.dataset.name));
+    });
   } catch (e) {
     showMsg('qaMsg', '加载失败:' + e.message, 'err');
+  }
+}
+
+// ★ 2026-08-05: 给已有成员追加本期 PV (原树迁入后, members 全部 PV=0, 逐个补录)
+//   - prompt() 输入 PV (正整数校验, 非法输入 alert)
+//   - 成功后刷新成员列表 modal + 树视图 (本期 PV 徽章)
+async function quickAddPvForMember(distId, name) {
+  if (!distId) return;
+  const raw = window.prompt(`给「${name || distId}」追加本期 PV (正整数):`, '');
+  if (raw === null) return;  // 用户取消
+  const pv = parseInt(raw.trim(), 10);
+  if (isNaN(pv) || pv <= 0 || String(pv) !== raw.trim()) {
+    alert('PV 必须是正整数 (e.g. 500)');
+    return;
+  }
+  try {
+    const resp = await fetch('/api/members/add_pv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_dist_id: distId, pv_amount: pv }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    showToast(`✓ 已给 ${data.member_name || distId} 追加 ${data.pv_amount} PV (${data.period_id})`, 'success', 3000);
+    // 刷新成员列表 modal (重开 = 重拉数据)
+    quickMembers();
+    // 刷新树视图 (本期 PV 徽章), 沿用 settle 后的刷新方式
+    const overlay = document.getElementById('treeViewOverlay');
+    if (overlay && typeof _refetchTreeWithSlotView === 'function') {
+      const treeView = overlay.querySelector('.tree-view');
+      const mode = (treeView && treeView.classList.contains('tv-active-slots')) ? 'active' : 'all';
+      _refetchTreeWithSlotView(mode);
+    }
+  } catch (e) {
+    alert('追加 PV 失败: ' + e.message);
   }
 }
 

@@ -398,6 +398,32 @@
 - **UAT 包内容**: 核心代码 (4 .py) + 启动 (3) + 算法 (skills/) + UI (static/) + 工具 (tools/) + 数据 (json/) + 文档 (README/GUIDE × 2/AGENTS) + LICENSE
 - 改 LLM 路由 / 启动脚本 / 打包必查 §5.29 列出的所有引用点
 
+### 2.13 原版网体迁入 members + 追加 PV (2026-08-05 拍板)
+
+- **业务**: `original_tree_nodes` 表 (264 节点真实网体, root=万陵洋 A8066781.1, 4 条直推线, 最深 13 层) 迁进 `members` 表, 作为 commission 系统正式网体
+- **用户拍板 3 条**:
+  1. **保留原编号** — A8066781.1 / N6000671.1 等直接进 members, 不重编号
+  2. **原 pv 字段不带入** — members 全部 `current_pv_balance=0`
+  3. **新增 POST /api/members/add_pv + UI 按钮** — 给已有成员追加本期 PV
+- **迁移脚本**: `tools/migrate_original_to_members.py` (幂等)
+  - 跑前自动备份 DB 到 `data/rewarddb.db.bak-YYYY-MM-DD-pre-members-import`
+  - members 非空拒绝执行 (退出码 1), `--force` 先 DELETE pv_ledger 再 DELETE members
+  - 字段映射: dist_id→member_dist_id (原编号), parent_id→parent_dist_id,
+    root (parent NULL) → slot_line_id=0, max_lines=min(原值,5) (root 原值 8 钳到 5),
+    role='消费股东', created_period_id=get_current_period_id()
+- **`_member_to_uid` A 号段** (main.py):
+  - `A<n>.<k>` → `7_000_000_000_000 + n*100 + k` (独立号段, 7×10^12 起)
+  - 不跟 N5637590 段 (5.6×10^14) / N-7 负数段 / N 格式 fallback 裸数字撞号
+  - 修复前: 20 个 A 格式节点 int("A8066781") 失败 → uid=0 撞 avail 占位保留值
+- **POST /api/members/add_pv**:
+  - body `{member_dist_id, pv_amount (gt=0), note?}`, 成员不存在 → 404
+  - 只插 `PVLedger(status="pending")`, **不动 current_pv_balance** (跟新成员挂入写法一致)
+  - UI: 成员列表 (quickMembers) 每行「➕ PV」按钮 → prompt 输入 → 成功后刷新列表 + 树视图
+- **root 检测一律结构化** (不再假设 N5637590.1=root):
+  - `parent_dist_id IS NULL AND (slot_line_id IS NULL OR slot_line_id=0)`
+  - `tools/init_root_member.py` 已改成结构检测 (防原树迁入后插双 root)
+  - `reset_test_data` 本来就是结构检测 (main.py)
+
 ---
 
 ## 3. 开发工作流
@@ -1662,7 +1688,8 @@ print(raw.split(b'\n\n', 1)[-1].decode('utf-8'))
 ---
 
 > 维护人: Justin Li (YuLi517)
-> 最后更新: 2026-07-27 (PR #70 下单管理 — §2.12 业务规则 + 8 个 sample 活性辅酶/辅酶奥米加/钙镁健骨/葡萄籽/超级水果素/健儿素/田园果蔬饮/日夜纤 合计 ¥35162 + 需求↑则库存按差量减少 (前端联动, 公式 stock_new = stock_orig - (req_new - req_orig)) + 显式「保存」按钮 + §5.35 7 个新踩坑教训)
+> 最后更新: 2026-08-05 (原树迁入 members — §2.13: original_tree_nodes 264 节点迁 members (root=万陵洋 A8066781.1, 保留原编号, PV 全置 0) + tools/migrate_original_to_members.py 幂等迁移 + _member_to_uid A 号段 (7×10^12 起) + POST /api/members/add_pv + 成员列表「➕ PV」按钮 + init_root_member 结构化 root 检测)
+> 上次更新: 2026-07-27 (PR #70 下单管理 — §2.12 业务规则 + 8 个 sample 活性辅酶/辅酶奥米加/钙镁健骨/葡萄籽/超级水果素/健儿素/田园果蔬饮/日夜纤 合计 ¥35162 + 需求↑则库存按差量减少 (前端联动, 公式 stock_new = stock_orig - (req_new - req_orig)) + 显式「保存」按钮 + §5.35 7 个新踩坑教训)
 
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph

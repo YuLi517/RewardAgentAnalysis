@@ -1442,6 +1442,60 @@ callback / helper 函数重构时, 容易把"原 opts 字段"当默认值留着,
 
 ---
 
+### 5.36 Tree-view 全部展开后自动 fit (commit b279ddf, 2026-08-06)
+
+**根因 (用户截图, 2026-08-06)**: 用户点 "全部展开" → 期望看到全 13 层 → 实际只看到 L1-L8 → 尝试竖向滚动到底 (max scrollTop=148) → L9-L13 仍 off-screen → 用户以为 "无法向下继续移动"
+
+**根本布局**: 5 叉 9+ 层网体在 100% 缩放下, root.offsetWidth ≈ 75000+, L9-L13 节点横向 x=50000+ 渲染, body 横向滚动条 74x 宽度溢出. tree 高度 1122 (1.1x viewport 1022) → 竖向只有 148px 可滚, 用户以为到底了.
+
+**之前有 ⤢ (适应窗口) 按钮** (`fitTreeToScreen` 函数, 在 main.py 3597 的 tv-zoom-controls 区域), 但:
+- 要用户主动点
+- 业务语义跟 "全部展开" 重叠
+- 按钮在小图标上, 用户感知不到
+
+**修复 (commit b279ddf)**:
+```js
+function treeViewExpandAll(btn) {
+  // ...展开所有 details
+  requestAnimationFrame(() => {
+    alignLevelTags(root);
+    requestAnimationFrame(() => {
+      if (typeof fitTreeToScreen === 'function') fitTreeToScreen();
+    });
+  });
+}
+```
+
+**双重 rAF 关键**: 282 details 全开 + 各自 toggle handler 全跑完, root.offsetWidth/Height 已稳定 → fit 算的是真实全树尺寸. TREE_ZOOM_MIN=0.3 clamp → 整树一屏可见 (zoom 30%).
+
+**同时: treeViewCollapseAll 末尾 resetTreeZoom()**:
+- 折叠后画布很小 (L1 banner 200x100), fit 过的 0.3 倍率看不全 banner 文字
+- 重置 100% 更合理 (banner 正常显示, 用户能点开某个 details 看子树)
+
+**踩坑 1: toggle handler rAF 顺序**
+- 282 个 `d.open = true` 每个触发 toggle event
+- 每个 toggle handler 里 rAF 调 `_refitTreeZoomWrap`
+- 282 个 rAF 排队, 跟 `treeViewExpandAll` 自己的 rAF 顺序执行
+- 双 rAF 保证 fit 跑在最后 (所有 toggle handler 都完了, root size 稳定)
+
+**踩坑 2: body overflow:auto 横向滚动**
+- 用户 100% 缩放下能横向滚到 x=50000+ 看 L9-L13
+- 但用户的"滚动"语义是"上下", "向右"是"next column", 跟"展开看下面"心智模型不符
+- 自动 fit 把"全部展开" 跟"看全树"语义统一, 用户不用学"先展开再 ⤤"
+
+**踩坑 3: scrollHeight = clientHeight 表示完全 fit**
+- 修复后 probe: `bodyScrollHeight=1022, bodyClientHeight=1022, zoom=0.3`
+- L9 row viewport y=364, L13 row viewport y=459 → 都在 0-1022 viewport 内
+- 跟 `maxAutoExpand=13` 修复 (commit f0ca8d6) 不一样, 那是原树 static page, 这次是 tree-view modal
+
+**Rule**: 任何"全部展开"按钮 (或类似的"最大化显示 N 项"操作), 默认 auto-fit:
+1. **业务意图统一** — 展开 = 看全, fit = 看全, 联动
+2. **避免用户学两个操作** — "展开 + 适应窗口"组合
+3. **大尺寸树 / 长列表 / 折叠面板** 都适用
+4. 配合 `TREE_ZOOM_MIN` / `LIST_MIN_FONT_SIZE` 这种下限 clamp, 防止过度缩小不可读
+
+---
+
 ## 6. 文件结构
 
 ```

@@ -1141,6 +1141,14 @@
           const child = byLine.get(line);
           if (child) {
             childContainer.appendChild(renderNode(child, depth + 1));
+          } else if (overflow.length > 0) {
+            // ★ 2026-08-05 fix: line 1-2 缺槽 + 有 overflow (line 3+ 真实子) → 用 overflow 补位
+            // 业务: 已经满足 2 叉规则 (有 2 个真实子, 不管 line 编号), 不再画 AVAIL 占位
+            //   例: 方添兰 children = [方素卿 (line 1), 万陵洋 (line 3)]
+            //   line 1 槽画方素卿, line 2 槽画万陵洋 (overflow.shift)
+            //   旧逻辑会画 AVAIL 占位误导用户, 而且后续 overflow 循环清空 globalNodeId 让 L badge 丢失
+            const overflowKid = overflow.shift();
+            childContainer.appendChild(renderNode(overflowKid, depth + 1));
           } else {
             // available 虚线占位
             // PR #31: 1 子时, 补的 line 用 predictAvailN 算具体 N
@@ -1164,7 +1172,7 @@
                 tooltipExtra = `available slot (预测)\nline=${line} | parent.globalNodeId=${parentN}, parentLevel=${depth}\ntree 公式 BFS 续 (跟 PR #24 lx_node_id.py 一致)\n如果挂人, 此槽节点的 globalNodeId 会是 ${availN}`;
               }
             } else {
-              // 0 子 / ≥3 子 (防御性): 标 X
+              // 0 子 (没有真实子): 标 X
               availN = 'X';
               tooltipExtra = `available slot\nline=${line} | 2 叉业务, 此槽当前未挂人\n无 globalNodeId (X 表示 "无编号")`;
             }
@@ -1182,20 +1190,18 @@
             childContainer.appendChild(availSlot);
           }
         }
-        // 防御性: overflow (children > 2 才会触发, 实际 eff=2 不会)
-        // 选 2 个有孙子的优先, 剩下的清空 globalNodeId 后画 (没 N, 标 L~X)
+        // 防御性: overflow 剩余 (补完 2 槽后剩下的, 实际 eff=2 应该不会)
+        // ★ 2026-08-05 fix: 不再清空 globalNodeId, 真实节点保持原 L badge 显示
         if (overflow.length > 0) {
-          // 按 "有孙子" 排序
+          // 按 "有孙子" 排序 (业务: 有孙子的优先, 视觉上更紧凑)
           overflow.sort((a, b) => {
             const aHas = (a.children || []).length > 0 ? 1 : 0;
             const bHas = (b.children || []).length > 0 ? 1 : 0;
             return bHas - aHas;  // 有孙子的优先
           });
-          // 全部画 (没 N, 标 L~X)
+          // 全部画 (保持原 globalNodeId, 让 L badge 正常显示)
           for (const c of overflow) {
-            // 临时复制 + 清空 globalNodeId, renderNode 不会显示 N
-            const cCopy = { ...c, globalNodeId: null };
-            childContainer.appendChild(renderNode(cCopy, depth + 1));
+            childContainer.appendChild(renderNode(c, depth + 1));
           }
         }
       } else {

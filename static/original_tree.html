@@ -1118,18 +1118,23 @@
     if (hasChildren) {
       const childContainer = document.createElement('div');
       childContainer.className = 'tree-node-children';
-      // ★ 2026-08-05: PR #30/PR #31 — L2+ 节点画 2 槽 (撤回 PR #28 5 槽)
+      // ★ 2026-08-05: PR #30/PR #31 — L1+ 节点画 2 槽 (撤回 PR #28 5 槽)
+      // ★ 2026-08-05 fix #2: 旧版 `if (depth >= 2)` 漏了 L1 父, L1 父缺槽时 AVAIL 不显示
+      //   例: 郜翠微 (A8822227.1, L1 父 max_lines=2) 只有 1 子 (周付双 line 1)
+      //   旧版只画 1 个真实子, line 2 空槽不画 AVAIL (用户反馈)
+      //   修复: `if (depth >= 1)` 让 L1 父也走 2 槽逻辑
       // 业务 (用户拍板 2026-08-05):
-      //   - L2 开始 (depth >= 2) 只画 2 叉 (line 1-2)
+      //   - L1 开始 (depth >= 1) 只画 2 叉 (line 1-2)
       //     5 叉业务实际只有 2 叉 (root eff=2 限制, line 1-2 解锁, line 3-5 不可挂)
       //     PR #28 画 5 槽 + 3 avail 是误导 (line 3-5 永远不可挂, 视觉上让用户以为有)
       //   - 1 子: 补 1 槽, 用 predictAvailN(parent.globalNodeId, depth, line) 算具体 N
       //     例: 王梦姣 (L2~10) line 2 子 → L3~26 (跟 PR #24 tree 公式一致)
+      //     例: 郜翠微 (L1~3) line 2 子 → L2~X (predictAvailN 在 gnode=3 算不出, 标 X)
       //   - 0 子: 补 2 槽, 都用 predictAvailN 算 (实际 0 子不太常见, 防御性)
       //   - 2 子: 2 槽都有数据, 不画 avail
       //   - ≥3 子 (防御性, eff=2 不会): 选 2 个有孙子的优先, 剩下的标 "L{depth+1}~X"
-      // L0 (depth 0) + L1 (depth 1): 按实际挂人显示 (不画 2 槽, 保持原样)
-      if (depth >= 2) {
+      // L0 (depth 0, root): 特殊, 5 line 槽, 不画 2 槽, 按实际挂人显示
+      if (depth >= 1) {
         // 按 parentLineId 分桶 (1-2)
         const byLine = new Map();
         const overflow = [];

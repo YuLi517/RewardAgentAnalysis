@@ -1,0 +1,13 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+openai>=1.30
+pydantic>=2.5
+python-dotenv>=1.0
+sqlalchemy>=2.0
+
+# Stage 2 新增:SQLAlchemy 2.x ORM + SQLite 持久化
+# 后期切 PostgreSQL:再装 psycopg2-binary,把 DB_URL 改成 postgresql://... 即可
+
+# ★ 2026-07-12 移除:numpy / python-docx / pypdf / python-multipart
+#    原 Stage 2C 知识库依赖整段下线(embedding / RAG 检索 / 文件解析 / 文件上传)
+#    业务侧只保留 chat (multi-turn 对话) + skills (网体算法) 两条主线

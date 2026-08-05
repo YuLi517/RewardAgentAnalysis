@@ -1,0 +1,22 @@
+# Git attributes for RewardAgentAnalysis
+# 强制 LF 换行,避免 Windows 下 commit 时被自动转 CRLF(Git 会输出警告)
+
+# 默认所有文本文件使用 LF
+* text=auto eol=lf
+
+# Windows 批处理文件保留 CRLF(脚本兼容)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 明确标记二进制文件,避免 diff 误判
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary

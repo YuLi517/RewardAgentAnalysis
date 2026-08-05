@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RewardAgentAnalysis 客户使用指南 (UAT v0.1)</title>
+<style>
+:root {
+  --tsb: #5AA4AE;
+  --yue: #D6ECF0;
+  --mo: #758A99;
+  --xiang: #F0C239;
+  --qing: #C0EBD7;
+  --err: #EF4444;
+  --bg: #FAFBFC;
+  --fg: #1F2937;
+  --muted: #6B7280;
+  --border: #E5E7EB;
+  --code-bg: #F3F4F6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.7;
+  color: var(--fg);
+  background: var(--bg);
+  padding: 24px 16px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+h1 {
+  font-size: 32px;
+  color: var(--tsb);
+  border-bottom: 3px solid var(--tsb);
+  padding-bottom: 12px;
+  margin-bottom: 24px;
+  margin-top: 16px;
+}
+h1:first-of-type { margin-top: 0; }
+h2 {
+  font-size: 24px;
+  color: var(--tsb);
+  border-left: 4px solid var(--tsb);
+  padding-left: 12px;
+  margin-top: 40px;
+  margin-bottom: 16px;
+}
+h3 {
+  font-size: 19px;
+  color: var(--mo);
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+h4 {
+  font-size: 16px;
+  color: var(--fg);
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+p { margin-bottom: 12px; }
+ul, ol { margin-left: 24px; margin-bottom: 12px; }
+li { margin-bottom: 6px; }
+blockquote {
+  border-left: 4px solid var(--qing);
+  background: #F0FDF4;
+  padding: 12px 16px;
+  margin: 12px 0;
+  color: var(--mo);
+  border-radius: 0 4px 4px 0;
+}
+blockquote p:last-child { margin-bottom: 0; }
+code {
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.9em;
+  color: #B91C1C;
+}
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+pre code {
+  background: none;
+  padding: 0;
+  color: var(--fg);
+  font-size: 0.9em;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  background: white;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+th {
+  background: var(--tsb);
+  color: white;
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 14px;
+}
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: #F9FAFB; }
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+a { color: var(--tsb); text-decoration: none; }
+a:hover { text-decoration: underline; }
+strong { color: var(--tsb); font-weight: 600; }
+.toc {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 24px;
+  margin-bottom: 32px;
+}
+.toc ul { list-style: none; margin-left: 0; }
+.toc li { margin-bottom: 4px; }
+.print-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background: var(--tsb);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 100;
+}
+.print-btn:hover { background: #4A8A93; }
+@media print {
+  body { padding: 0; max-width: 100%; }
+  .print-btn, .toc { display: none; }
+  h1, h2 { page-break-after: avoid; }
+  table, pre { page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">🖨️ 打印 / 导出 PDF</button>
+<h1 id="rewardagent">RewardAgentAnalysis 客户使用指南</h1>
+<blockquote>
+<p>5 叉树网体 commission 系统</p>
+<p><strong>版本</strong>: UAT v0.1 (2026-07-21)<br />
+<strong>适用客户</strong>: 业务方 UAT 测试团队</p>
+</blockquote>
+<hr />
+<h2 id="_1">📖 目录</h2>
+<ol>
+<li><a href="#1-产品简介">产品简介</a></li>
+<li><a href="#2-5-分钟上手">5 分钟上手</a></li>
+<li><a href="#3-核心功能">核心功能</a></li>
+<li><a href="#4-业务规则速查">业务规则速查</a></li>
+<li><a href="#5-角色说明">角色说明</a></li>
+<li><a href="#6-常见操作-faq">常见操作 FAQ</a></li>
+<li><a href="#7-数据备份与恢复">数据备份与恢复</a></li>
+<li><a href="#8-故障排查">故障排查</a></li>
+<li><a href="#9-反馈渠道">反馈渠道</a></li>
+</ol>
+<hr />
+<h2 id="1">1. 产品简介</h2>
+<h3 id="11">1.1 这是什么</h3>
+<p>RewardAgentAnalysis 是一个<strong>网体 member/commission 管理系统</strong>, 用 5 叉树组织会员层级, 自动按周结算 commission (佣金).</p>
+<table>
+<thead>
+<tr>
+<th>关键概念</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>5 叉树</strong></td>
+<td>每个 member 最多有 5 个直接下级 (line 1-5)</td>
+</tr>
+<tr>
+<td><strong>9 层</strong></td>
+<td>树的最深深度 9 层 (line 1+2 默认开, 满 9 层解锁 line 3+4, 都满再开 5)</td>
+</tr>
+<tr>
+<td><strong>commission</strong></td>
+<td>15% × MIN(MAX 子区 PV, SUM 其余 4) [基本] + 7 层对等 <code>[0.15, 0.10, 0.05×5]</code></td>
+</tr>
+<tr>
+<td><strong>PV</strong></td>
+<td>个人业绩值, 周结算时消费累积成 commission</td>
+</tr>
+<tr>
+<td><strong>业务周</strong></td>
+<td>Sun 00:00 → Fri 23:59 (6 天) + Sat-Mon 补录窗口 (3 天)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="12">1.2 谁在用</h3>
+<ul>
+<li><strong>业务方</strong> (UAT 客户): 录入新 member, 录入 PV, 触发周结算, 查 commission</li>
+<li><strong>运营/管理者</strong>: 看 commission preview, 看历史结算记录, 重置测试数据</li>
+</ul>
+<h3 id="13">1.3 浏览器访问</h3>
+<p>启动后访问 <a href="http://localhost:28080">http://localhost:28080</a>, 看到<strong>欢迎屏</strong> + 4 个功能卡片 (成员/树视图/批量/管理).</p>
+<hr />
+<h2 id="2-5">2. 5 分钟上手</h2>
+<h3 id="21-windows">2.1 启动 (Windows)</h3>
+<ol>
+<li>双击 <code>start_uvicorn.bat</code></li>
+<li>等 3-5 秒, 看到 <code>Uvicorn running on http://0.0.0.0:28080</code> 就 OK</li>
+<li>浏览器打开 <a href="http://localhost:28080">http://localhost:28080</a></li>
+</ol>
+<blockquote>
+<p>提示: 首次启动会自动建 <code>data/rewarddb.db</code> (SQLite 数据库), 不用手工建.</p>
+</blockquote>
+<h3 id="22-macos-linux">2.2 启动 (macOS / Linux)</h3>
+<pre><code class="language-bash">cd RewardAgentAnalysis
+pip install -r requirements.txt
+python main.py
+# 浏览器打开 http://localhost:28080
+</code></pre>
+<h3 id="23">2.3 验证启动</h3>
+<p>打开 <a href="http://localhost:28080">http://localhost:28080</a>, 应该看到:<br />
+- 欢迎屏 (大标题 "RewardAgentAnalysis")<br />
+- 4 个功能卡片<br />
+- 顶部状态栏: 当前业务周 + 状态 (open/settled)</p>
+<p>如果看到 "Internal Server Error" 或白屏, 看 <a href="#8-故障排查">§8 故障排查</a>.</p>
+<h3 id="24">2.4 重置测试数据</h3>
+<p>业务方 UAT 反复试算法时, 节点加多了想"回到初始状态":<br />
+- 点工具栏右上角 <strong>🗑️ 重置</strong> 按钮<br />
+- 二次确认 (浏览器弹窗)<br />
+- 几秒后回到 "只有 root" 的初始状态</p>
+<blockquote>
+<p>⚠️ 重置会删除所有非 root member + 所有 PV 流水 + 所有结算期. <strong>不可恢复</strong>.</p>
+</blockquote>
+<hr />
+<h2 id="3">3. 核心功能</h2>
+<h3 id="31">3.1 树视图 (主功能)</h3>
+<p><strong>入口</strong>: 欢迎屏 → "🌳 树视图" 卡片 (或工具栏按钮)</p>
+<p><strong>展示</strong>:<br />
+- 5 叉树可视化, root (王常军 N5637590.1) 居中<br />
+- 9 层深度, 满员/未挂入用颜色区分<br />
+- 每个 node (member) 是一张<strong>名片</strong>, 显示:<br />
+  - 姓名 + distId<br />
+  - 角色徽章 (7 角色 + 颜色)<br />
+  - <strong>本期 PV</strong> (绿): 本周新增 PV (settled 后自动隐藏)<br />
+  - <strong>剩余 PV</strong> (黄): 跨期累积的 PV<br />
+  - <strong>累计 $</strong> (金): 历史 settle 后的总 commission<br />
+  - <strong>本期可拿</strong> (紫): 本期 PV 出现后, 父节点实时算出的预计 commission (仅在 open 期显示)<br />
+  - L1-L5 标识 (5 叉树第几条线)<br />
+  - "🔒" 锁: line &gt; 当前 eff (不可挂入)</p>
+<p><strong>操作</strong>:<br />
+- <strong>点击 node</strong>: 展开/折叠子节点<br />
+- <strong>拖动 canvas</strong>: 按住 canvas 空白处拖动, 平移视图<br />
+- <strong>滚轮</strong>: 缩放</p>
+<h3 id="32-member">3.2 批量添加 member</h3>
+<p><strong>入口</strong>: 工具栏 <strong>➕ 批量添加</strong> 按钮</p>
+<p><strong>用法</strong>:<br />
+- 默认 3 行, 表格化输入 (姓名 / PV / 角色 / 删除)<br />
+- Tab 跳列, Enter 加行, 最后一行 Enter 提交<br />
+- 严格校验: 姓名空 / PV 非数字 → 红框 + 阻止提交<br />
+- 提交按钮实时显示有效行数: <code>批量挂入并写盘 (3 位)</code></p>
+<p><strong>角色下拉</strong> (7 个):<br />
+- 消费股东 (默认)<br />
+- 预备合伙人<br />
+- 合伙人员工<br />
+- 初级管理合伙人<br />
+- 中级管理合伙人<br />
+- 高级管理合伙人<br />
+- Inactive</p>
+<blockquote>
+<p><strong>小技巧</strong>: 一次加 5 个, 看 commission preview 紫色徽章实时变化.</p>
+</blockquote>
+<h3 id="33-member">3.3 单加 member</h3>
+<p><strong>入口</strong>: 工具栏 <strong>➕ 单加</strong> 按钮</p>
+<p>适合临时单加一个, 走完批量流程 (输入姓名 + PV + 角色 + 提交).</p>
+<h3 id="34">3.4 期间结算 (主结算)</h3>
+<p><strong>入口</strong>: 工具栏 <strong>💰 结算本周</strong> 按钮 (金色)</p>
+<p><strong>何时可点</strong>:<br />
+- 当前业务周状态 = <code>open</code> (Sun-Fri 期间)<br />
+- 按钮可点</p>
+<p><strong>点了之后</strong>:<br />
+- 算本期所有 member 的 basic commission (own + 7 层对等)<br />
+- 落账到 <code>members.total_commission</code><br />
+- 期 PV 处理:<br />
+  - 一部分被配对消耗 (→ commission)<br />
+  - 一部分 carry 余额 (→ <code>current_pv_balance</code>, 显示在"剩余 PV"黄徽章)<br />
+- 期间状态: <code>open</code> → <code>settled</code></p>
+<h3 id="35-commission-sat-mon">3.5 补录 commission (Sat-Mon 补录窗口)</h3>
+<p><strong>入口</strong>: 工具栏 <strong>📝 补录</strong> 按钮 (蓝紫色, <strong>只在 Sat-Mon</strong> 显示)</p>
+<p><strong>业务规则</strong>:<br />
+- 业务周 (Sun-Fri) 结束后, Sat 00:00 → Mon 23:59 是<strong>补录窗口</strong> (3 天)<br />
+- 补录<strong>只能补基本 commission</strong> (own × 15%)<br />
+- <strong>跳过 7 层对等</strong> (对等链已冻结, 不能再分润)<br />
+- Mon 23:59 之后, 期间状态 → <code>closed</code>, 不能再补</p>
+<p><strong>适用场景</strong>:<br />
+- 周五漏录一个 member 的 PV<br />
+- 想让某个 member 在历史已 settled 的周里"补一笔" commission</p>
+<h3 id="36">3.6 批量重置测试数据</h3>
+<p><strong>入口</strong>: 工具栏 <strong>🗑️ 重置</strong> 按钮 (警示红)</p>
+<p><strong>二次确认</strong> (防误点):<br />
+- 浏览器弹窗列出会删/会留的项<br />
+- 确认后执行</p>
+<p><strong>保留</strong>:<br />
+- root (王常军 N5637590.1), 字段重置 (carry=0, commission=0, last_period=NULL)</p>
+<p><strong>删除</strong>:<br />
+- 所有非 root member<br />
+- 全部 PV 流水<br />
+- 全部结算期 (然后重建当前期)</p>
+<h3 id="37-commission">3.7 commission 实时预览 (本期可拿)</h3>
+<p><strong>业务规则</strong>:<br />
+- 当子节点本期 PV 出现后, <strong>父节点</strong>实时显示能拿的 commission<br />
+- 计算公式跟 <code>settle_period</code> 完全一致:<br />
+  - own basic = MIN(MAX 子区 PV, SUM 其余 4) × 15%<br />
+  - pair bonus = 7 层对等 <code>[0.15, 0.10, 0.05×5]</code><br />
+- 紫色徽章 "本期可拿 ¥X.XX", 仅在 <code>open</code> 期显示<br />
+- tooltip 分解: <code>own basic: ¥X + 7层对等 pair: ¥Y = ¥Z</code><br />
+- settled 期自动隐藏 (已落账, 不算 preview)</p>
+<p><strong>示例</strong>:<br />
+- root 有 2 个子, z1=500, z2=300<br />
+- MIN(500, 300) = 300, basic = 300 × 15% = ¥45<br />
+- root 名片显示 "本期可拿 ¥45.00"</p>
+<hr />
+<h2 id="4">4. 业务规则速查</h2>
+<h3 id="41">4.1 树结构</h3>
+<ul>
+<li><strong>5 叉树</strong>: 每个 member 最多 5 个直接下级</li>
+<li><strong>9 层深度</strong>: 树最深 9 层 (不算 root)</li>
+<li><strong>default eff = 2</strong>: root 默认只能往 line 1 + line 2 挂人</li>
+<li><strong>line 1+2 都满 9 层</strong> → eff = 4 (line 3+4 解锁)</li>
+<li><strong>line 1-4 都满 9 层</strong> → eff = 5 (line 5 解锁)</li>
+<li>"line 满" = 该 line 父节点下有 9 层子孙 (不含 line 自己)</li>
+</ul>
+<h3 id="42-pr-55">4.2 业务周 (PR #55)</h3>
+<table>
+<thead>
+<tr>
+<th>时间窗口</th>
+<th>期间状态</th>
+<th>可操作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Sun 00:00 - Fri 23:59:59.999</strong> (6 天)</td>
+<td><code>open</code></td>
+<td>挂 member / 主结算</td>
+</tr>
+<tr>
+<td><strong>Sat 00:00 - Mon 23:59:59.999</strong> (3 天)</td>
+<td><code>settled</code> (期已主结算)</td>
+<td><strong>只能补录基本 commission</strong></td>
+</tr>
+<tr>
+<td><strong>Tue 00:00 起</strong></td>
+<td><code>closed</code></td>
+<td>不能再补</td>
+</tr>
+</tbody>
+</table>
+<p><strong>业务 W 编号</strong>: 沿用 ISO W 数字, 但范围是 Sun-Fri.<br />
+- 例: 业务 W29 = 2026-07-12 (Sun) ~ 2026-07-17 (Fri)<br />
+- 跟 ISO W29 (Mon-Sun) 不一样</p>
+<h3 id="43-commission">4.3 commission 计算</h3>
+<p><strong>基本佣金</strong> (own):<br />
+- 每个父节点: <code>MIN(MAX 子区 PV, SUM 其余 4 个子区 PV) × 15%</code><br />
+- 例: 子区 PV = [500, 300, 200, 100, 0], MAX=500, SUM 其余=600, MIN(500, 600)=500, basic = 500 × 15% = ¥75</p>
+<p><strong>7 层对等配对 commission</strong> (pair bonus):<br />
+- 每个子孙节点的 own basic × ratio 分给 1/2/3/4/5/6/7 代祖先<br />
+- ratios = <code>[0.15, 0.10, 0.05, 0.05, 0.05, 0.05, 0.05]</code><br />
+- 总和 = 0.5 (一半 own 给祖先, 一半留自己)</p>
+<p><strong>carry (剩余 PV)</strong>:<br />
+- 配对 commission 消耗 PV 的一部分<br />
+- 剩余的 PV 累积到 <code>current_pv_balance</code>, 显示在"剩余 PV"黄徽章<br />
+- 跨期 carry (下一期可继续配对)</p>
+<h3 id="44-member">4.4 member 编码</h3>
+<ul>
+<li><strong>格式</strong>: <code>N5637590.X</code> (X = DB id 序号, root=1, 其他 +1 连续)</li>
+<li>例: 王常军 <code>N5637590.1</code>, z1 <code>N5637590.2</code>, z2 <code>N5637590.3</code></li>
+</ul>
+<h3 id="45">4.5 数据约束</h3>
+<ul>
+<li><strong>PV</strong>: 正整数 (1, 50, 99, 100, 任意整数), 业务上没上限</li>
+<li><strong>姓名</strong>: 必填, 任意非空字符串</li>
+<li><strong>角色</strong>: 7 选 1, 默认"消费股东"</li>
+</ul>
+<hr />
+<h2 id="5">5. 角色说明</h2>
+<table>
+<thead>
+<tr>
+<th>角色</th>
+<th>颜色</th>
+<th>业务含义</th>
+<th>适用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>消费股东</strong></td>
+<td>浅蓝 #BFDBFE</td>
+<td>普通消费型股东</td>
+<td>入门 member, 默认角色</td>
+</tr>
+<tr>
+<td><strong>预备合伙人</strong></td>
+<td>浅绿 #BBF7D0</td>
+<td>候选合伙人</td>
+<td>有意向转合伙人的 member</td>
+</tr>
+<tr>
+<td><strong>合伙人员工</strong></td>
+<td>浅紫 #DDD6FE</td>
+<td>合伙人体系下的员工</td>
+<td>合伙人带的下属</td>
+</tr>
+<tr>
+<td><strong>初级管理合伙人</strong></td>
+<td>浅橙 #FED7AA</td>
+<td>初级管理岗</td>
+<td>团队规模 5-10 人</td>
+</tr>
+<tr>
+<td><strong>中级管理合伙人</strong></td>
+<td>浅粉 #FBCFE8</td>
+<td>中级管理岗</td>
+<td>团队规模 10-30 人</td>
+</tr>
+<tr>
+<td><strong>高级管理合伙人</strong></td>
+<td>浅红 #FECACA</td>
+<td>高级管理岗</td>
+<td>团队规模 30+ 人</td>
+</tr>
+<tr>
+<td><strong>Inactive</strong></td>
+<td>浅灰 #E5E7EB</td>
+<td>不活跃 member</td>
+<td>暂时离场 / 历史 member</td>
+</tr>
+</tbody>
+</table>
+<p><strong>作用</strong>:<br />
+- 名片 role 徽章颜色对照<br />
+- 业务上仅做标识, <strong>不影响 commission 计算</strong> (commission 只看 PV + 树结构)</p>
+<hr />
+<h2 id="6-faq">6. 常见操作 FAQ</h2>
+<h3 id="q1-member">Q1: 怎么加一个 member?</h3>
+<p><strong>单加</strong>: 工具栏 → <strong>➕ 单加</strong> → 输入姓名 + PV + 选角色 → 提交<br />
+<strong>批量</strong>: 工具栏 → <strong>➕ 批量添加</strong> → 表格输入多行 → 提交</p>
+<h3 id="q2-pv">Q2: PV 可以输入小数吗?</h3>
+<p>不可以, PV 必须是<strong>正整数</strong> (1, 50, 99, 100, 任意整数). 输入小数会报红框.</p>
+<h3 id="q3-pv">Q3: 怎么快速调整 PV 值?</h3>
+<p>每个 PV 输入框右侧有 <strong>+/-</strong> 按钮 (跳 100), 跟 native number spinner 一致:<br />
+- <strong>+</strong> 在上, <strong>-</strong> 在下 (PR #62 跟 native 一致)<br />
+- 点一下加/减 100<br />
+- 也可直接输入任意整数 (PR #59 自由输入)</p>
+<h3 id="q4-commission">Q4: 怎么看历史 commission?</h3>
+<p>点工具栏右上角 <strong>📜 期间列表</strong> 按钮, 列出所有历史业务周.<br />
+点某个期, 看 summary (本期所有 member 的 commission + 配对明细).</p>
+<h3 id="q5-member-pv">Q5: 怎么改 member 的 PV?</h3>
+<p>当前版本 (v0.1) 不支持改历史 PV. 如需修改, 重置该 member 后重新录入.</p>
+<h3 id="q6-member">Q6: 怎么删一个 member?</h3>
+<p>当前版本不支持单删. 用 <strong>🗑️ 重置</strong> 一键回到初始状态, 然后重新加需要的 member.<br />
+(单删功能在排期, 见 §9 反馈渠道)</p>
+<h3 id="q7-member-commission-preview">Q7: 为什么我加了 member, 但 commission preview 紫色徽章不显示?</h3>
+<p>可能原因:<br />
+1. <strong>当前期间已 settled</strong>: 紫色徽章只在 <code>open</code> 期显示. 检查工具栏当前期间状态.<br />
+2. <strong>PV 为 0 或太小</strong>: 0 commission 不显示徽章.<br />
+3. <strong>父节点超过 7 层</strong>: 7 层对等只到 7 代祖先, 8 代以上不参与.</p>
+<h3 id="q8-open-settled">Q8: 怎么知道本周是 open 还是 settled?</h3>
+<p>工具栏右上角显示当前业务周 + 状态 (open/settled/closed):<br />
+- <strong>open</strong>: 绿色, 可挂 member, 可主结算<br />
+- <strong>settled</strong>: 黄色, 已主结算, 可补录 (Sat-Mon)<br />
+- <strong>closed</strong>: 灰色, 补录截止</p>
+<h3 id="q9-commission-max-pv">Q9: commission 计算的 "MAX 子区 PV" 怎么理解?</h3>
+<p>5 叉树每个父节点有 5 个子区 (line 1-5), 每个子区 PV = 该子区所有子孙 PV 之和.<br />
+- 例: 子区 PV = [500, 300, 200, 100, 0]<br />
+- MAX = 500 (line 1), SUM 其余 4 = 300+200+100+0 = 600<br />
+- MIN(500, 600) = 500<br />
+- basic = 500 × 15% = ¥75</p>
+<h3 id="q10-7-deepseek-ai-commission">Q10: 为什么 7 层对等不算 deepseek 那种 AI commission?</h3>
+<p>这是按 7 代祖先链静态分润, 不是 AI 模型打分. 设计原则:<br />
+- <strong>前 2 代</strong> 拿大头 (15%, 10%)<br />
+- <strong>3-7 代</strong> 均分 5% × 5<br />
+- 总和 50%, 50% 留给 own (自身消耗 PV)</p>
+<h3 id="q11">Q11: 数据存在哪?</h3>
+<p>SQLite 文件 <code>data/rewarddb.db</code>. 整个数据库一个文件, 备份 = 复制这个文件.</p>
+<h3 id="q12">Q12: 能不能多个人同时用?</h3>
+<p>当前 v0.1 是单机版, SQLite 文件锁. 多窗口同时操作可能撞锁 (后台有兜底).<br />
+正式版 (v0.2+) 计划支持多用户 + 权限.</p>
+<h3 id="q13-commission">Q13: 我能导出 commission 明细吗?</h3>
+<p>工具栏 <strong>📥 导出</strong> 按钮 (后续 PR 加) — 导出 CSV.<br />
+当前可用 API: <code>GET /api/period/{id}/summary</code> 拿 JSON 原始数据.</p>
+<h3 id="q14">Q14: 怎么从测试数据切到正式数据?</h3>
+<p>正式部署建议:<br />
+1. <strong>保留 root</strong>: root distId 不能变<br />
+2. <strong>清空测试 member</strong>: 点 🗑️ 重置<br />
+3. <strong>改 root 字段</strong>: 通过 <code>data/rewarddb.db</code> 直接改, 或后续管理界面<br />
+4. <strong>重置期间</strong>: 重置会自动重建当前期</p>
+<h3 id="q15-line-12-9-l3">Q15: 我看到 "Line 1+2 都满 9 层" 但 L3 还是锁的, 为什么?</h3>
+<p>"满 9 层" = 该 line 父节点下有 9 层子孙 (不含 line 自己).<br />
+- 例: root.line1 父节点 = root (depth 0), 子孙 = line1.depth 1-9 → 满<br />
+- 但要 line1 + line2 <strong>都</strong>满才解锁 line3+4<br />
+- 重新点 🔄 刷新按钮, 看看状态</p>
+<h3 id="q16-pv-pv">Q16: "本期 PV" 绿徽章 跟 "剩余 PV" 黄徽章 区别?</h3>
+<table>
+<thead>
+<tr>
+<th>徽章</th>
+<th>颜色</th>
+<th>含义</th>
+<th>何时显示</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>本期 PV</strong></td>
+<td>绿</td>
+<td>本周新增 PV</td>
+<td><code>open</code> 期, &gt; 0 时</td>
+</tr>
+<tr>
+<td><strong>剩余 PV</strong></td>
+<td>黄</td>
+<td>跨期累积 PV (carry)</td>
+<td>任意期, &gt; 0 时</td>
+</tr>
+<tr>
+<td><strong>累计 $</strong></td>
+<td>金</td>
+<td>历史 settle 后的总 commission</td>
+<td>任意期, &gt; 0 时</td>
+</tr>
+<tr>
+<td><strong>本期可拿</strong></td>
+<td>紫</td>
+<td>本期 PV 模拟算的 commission</td>
+<td><code>open</code> 期, &gt; 0 时</td>
+</tr>
+</tbody>
+</table>
+<p>settled 期绿/紫徽章<strong>自动隐藏</strong> (已落账, 不算 preview).</p>
+<hr />
+<h2 id="7">7. 数据备份与恢复</h2>
+<h3 id="71-3">7.1 备份 (3 种方式)</h3>
+<p><strong>方式 1: 复制 db 文件</strong> (最简单)</p>
+<pre><code class="language-bash"># 停 server
+# 复制 data/rewarddb.db 到备份目录
+cp data/rewarddb.db backup/rewarddb_2026-07-21.db
+# 启 server
+</code></pre>
+<p><strong>方式 2: 导出 JSON</strong> (跨平台)</p>
+<pre><code class="language-bash"># 浏览器打开
+http://localhost:28080/api/admin/tables/members
+http://localhost:28080/api/admin/tables/pv_ledger
+http://localhost:28080/api/admin/tables/commission_periods
+# 另存为 JSON 文件
+</code></pre>
+<p><strong>方式 3: 工具栏导出</strong> (后续 PR)</p>
+<h3 id="72">7.2 恢复</h3>
+<pre><code class="language-bash"># 停 server
+# 覆盖 db 文件
+cp backup/rewarddb_2026-07-21.db data/rewarddb.db
+# 启 server (会自动跑 migration)
+</code></pre>
+<h3 id="73">7.3 自动备份建议</h3>
+<p>每周 (Fri settle 之后) 手动复制 <code>data/rewarddb.db</code> 到:<br />
+- 网盘 (OneDrive / Google Drive / 阿里云盘)<br />
+- 另一台机器<br />
+- 邮件附件给自己</p>
+<p>正式版 (v0.2+) 计划加 cron 自动备份.</p>
+<hr />
+<h2 id="8">8. 故障排查</h2>
+<h3 id="81-address-already-in-use">8.1 启动失败: "Address already in use"</h3>
+<p><strong>原因</strong>: 28080 端口被占用<br />
+<strong>解决</strong>:</p>
+<pre><code class="language-bash"># 找出占用进程
+netstat -ano | findstr :28080    # Windows
+lsof -i :28080                    # macOS/Linux
+
+# 停掉, 或换端口启动
+python main.py --port 8001
+</code></pre>
+<h3 id="82-no-module-named-fastapi">8.2 启动失败: "No module named 'fastapi'"</h3>
+<p><strong>原因</strong>: 依赖没装<br />
+<strong>解决</strong>:</p>
+<pre><code class="language-bash">pip install -r requirements.txt
+</code></pre>
+<h3 id="83-internal-server-error">8.3 浏览器白屏 / "Internal Server Error"</h3>
+<p><strong>排查</strong>:<br />
+1. 看 server 控制台日志 (uvicorn.err.log 或 start_uvicorn.bat 窗口)<br />
+2. 看 <code>data/rewarddb.db</code> 文件锁 (是否多个 server 进程在跑)<br />
+3. 浏览器 DevTools → Network → 找 5xx 响应 → 看 Response body</p>
+<h3 id="84">8.4 数据看起来不对</h3>
+<p><strong>常见</strong>:<br />
+- <strong>"PV 算少了"</strong>: 检查 carry (剩余 PV) — settle 后 PV 一部分消耗配对, 一部分 carry<br />
+- <strong>"commission 不对"</strong>: 确认期间状态 (open/settled/closed), 补录 commission 只算 own 不算 pair<br />
+- <strong>"成员没出现"</strong>: 检查 line 是否解锁 (L3+ 需要 L1+L2 都满 9 层)</p>
+<p><strong>重置</strong>: 点 <strong>🗑️ 重置</strong> 回到初始状态, 重新试.</p>
+<h3 id="85-database-is-locked">8.5 数据库锁 "database is locked"</h3>
+<p><strong>原因</strong>: 多 server 进程 / 多浏览器同时操作<br />
+<strong>解决</strong>:<br />
+1. 关掉所有 server 进程<br />
+2. 关掉多余浏览器窗口<br />
+3. 重新启动一个 server</p>
+<h3 id="86-chat-chat-sessions">8.6 想要 chat 功能 (/chat /sessions)</h3>
+<p><strong>当前</strong>: chat 端点需 LLM key, <strong>默认未启用</strong><br />
+<strong>启用</strong>:<br />
+1. <code>cp .env.example .env</code><br />
+2. 编辑 .env, 填入 LLM key:<br />
+<code>LLM_PROVIDERS=deepseek
+   DEEPSEEK_API_KEY=sk-...
+   DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+   DEEPSEEK_MODEL=deepseek-chat</code><br />
+3. 重启 server<br />
+4. 浏览器访问 /chat 端点</p>
+<blockquote>
+<p>UAT 阶段不推荐启用 chat, 业务方只测 commission 系统.</p>
+</blockquote>
+<hr />
+<h2 id="9">9. 反馈渠道</h2>
+<h3 id="91-bug">9.1 Bug 报告</h3>
+<p>发现 bug, 请记录:<br />
+1. <strong>现象</strong>: 看到了什么 (截图 + 操作步骤)<br />
+2. <strong>预期</strong>: 应该是什么<br />
+3. <strong>环境</strong>: 操作系统 / 浏览器 / 启动方式<br />
+4. <strong>日志</strong>: <code>uvicorn.err.log</code> 内容 (如有)<br />
+5. <strong>数据状态</strong>: 哪几个 member, 哪个期间, 什么操作</p>
+<p>发给: <strong>Justin Li</strong> (raincoatliyu@163.com / 134-6636-7329)</p>
+<h3 id="92">9.2 功能建议</h3>
+<p>记录:<br />
+1. <strong>场景</strong>: 什么业务场景下需要<br />
+2. <strong>方案</strong>: 期望怎么实现<br />
+3. <strong>优先级</strong>: 紧急 / 重要 / 一般</p>
+<p>发给: 同上.</p>
+<h3 id="93">9.3 紧急联系</h3>
+<p>业务关键 bug (commission 算错 / 数据丢失 / 系统挂了):<br />
+- <strong>电话</strong>: 134-6636-7329<br />
+- <strong>微信</strong>: raincoatliyu<br />
+- <strong>邮件</strong>: raincoatliyu@163.com</p>
+<hr />
+<h2 id="_2">📌 附录</h2>
+<h3 id="a-ui">A. 快捷键 (UI)</h3>
+<table>
+<thead>
+<tr>
+<th>键</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tab</strong></td>
+<td>跳到下一个 input (在批量添加表格里跳列)</td>
+</tr>
+<tr>
+<td><strong>Enter</strong></td>
+<td>在批量添加最后一行 = 提交, 其他行 = 加新行</td>
+</tr>
+<tr>
+<td><strong>Esc</strong></td>
+<td>关闭 modal</td>
+</tr>
+<tr>
+<td><strong>Ctrl + R</strong></td>
+<td>刷新树视图</td>
+</tr>
+</tbody>
+</table>
+<h3 id="b">B. 浏览器兼容</h3>
+<table>
+<thead>
+<tr>
+<th>浏览器</th>
+<th>版本</th>
+<th>支持</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Chrome</td>
+<td>≥ 100</td>
+<td>✅ 推荐</td>
+</tr>
+<tr>
+<td>Edge</td>
+<td>≥ 100</td>
+<td>✅ 推荐</td>
+</tr>
+<tr>
+<td>Firefox</td>
+<td>≥ 100</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Safari</td>
+<td>≥ 15</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>IE</td>
+<td>任意</td>
+<td>❌ 不支持</td>
+</tr>
+</tbody>
+</table>
+<h3 id="c">C. 默认配置</h3>
+<ul>
+<li><strong>Server</strong>: <code>0.0.0.0:28080</code></li>
+<li><strong>DB</strong>: <code>data/rewarddb.db</code> (SQLite, gitignored)</li>
+<li><strong>期间</strong>: 业务周 Sun-Fri (PR #55)</li>
+<li><strong>角色</strong>: 7 个 (PR #42)</li>
+<li><strong>commission rate</strong>: 15% (own)</li>
+<li><strong>配对 ratio</strong>: <code>[0.15, 0.10, 0.05×5]</code> (1-7 代)</li>
+<li><strong>5 叉树 9 层</strong>: root eff=2, 满层解锁 4, 再满 5</li>
+</ul>
+<h3 id="d">D. 客户文档版本</h3>
+<table>
+<thead>
+<tr>
+<th>版本</th>
+<th>日期</th>
+<th>改动</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UAT v0.1</td>
+<td>2026-07-21</td>
+<td>初版 (PR #63 配套)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<blockquote>
+<p>维护: Justin Li (YuLi517)<br />
+反馈: raincoatliyu@163.com / 134-6636-7329</p>
+</blockquote>
+</body>
+</html>

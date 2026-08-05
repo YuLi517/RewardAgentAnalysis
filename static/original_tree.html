@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>原版网体 · 5 叉树 (303 节点)</title>
+<style>
+  :root {
+    --bg-page: #F5F2EC;
+    --bg-card: #FFFFFF;
+    --bg-card-hover: #FAF7F0;
+    --bg-card-ultimate: #FEF3C7;
+    --bg-card-elite: #DBEAFE;
+    --bg-card-business: #D1FAE5;
+    --bg-card-member: #F3F4F6;
+    --border: #D1D5DB;
+    --border-hover: #9CA3AF;
+    --text-primary: #1F2937;
+    --text-secondary: #6B7280;
+    --text-muted: #9CA3AF;
+    --gold: #F0C239;
+    --gold-dark: #B8881A;
+    --cyan: #5AA4AE;
+    --red: #EF4444;
+    --green: #10B981;
+    --blue: #3B82F6;
+    --purple: #8B5CF6;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--text-primary);
+    background: var(--bg-page);
+    overflow: hidden;
+  }
+
+  /* ========== Toolbar ========== */
+  .toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: linear-gradient(135deg, #5AA4AE 0%, #4A8C95 100%);
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    z-index: 100;
+  }
+
+  .toolbar-title {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    flex: 0 0 auto;
+    margin-right: 24px;
+  }
+
+  .toolbar-title-icon {
+    margin-right: 8px;
+    font-size: 20px;
+  }
+
+  /* ★ 2026-08-05: 5 段式横条 — 数据区 (3 stat, flex 0) */
+  .toolbar-stats {
+    display: flex;
+    gap: 8px;
+    font-size: 13px;
+    opacity: 0.95;
+    flex: 0 0 auto;
+    margin: 0 12px 0 4px;
+  }
+
+  .toolbar-stat {
+    background: rgba(255,255,255,0.15);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .toolbar-stat b {
+    font-weight: 700;
+    margin-left: 4px;
+  }
+
+  /* ★ 2026-08-05: 业务色 popover — 4 业务色合并到一个下拉按钮 */
+  .toolbar-popover {
+    position: relative;
+    flex: 0 0 auto;
+    margin: 0 12px 0 0;
+  }
+
+  .toolbar-popover-trigger {
+    background: rgba(255,255,255,0.15);
+    color: #FFFFFF;
+    border: 1px solid rgba(255,255,255,0.25);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .toolbar-popover-trigger:hover {
+    background: rgba(255,255,255,0.25);
+  }
+
+  .toolbar-popover-trigger[aria-expanded="true"] {
+    background: rgba(255,255,255,0.30);
+  }
+
+  .toolbar-popover-trigger .trigger-icon {
+    font-size: 14px;
+  }
+
+  .toolbar-popover-trigger .trigger-caret {
+    font-size: 10px;
+    margin-left: 2px;
+    transition: transform 0.15s;
+  }
+
+  .toolbar-popover-trigger[aria-expanded="true"] .trigger-caret {
+    transform: rotate(180deg);
+  }
+
+  .toolbar-popover-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    background: #FFFFFF;
+    color: #1F2937;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.08);
+    padding: 6px 0;
+    min-width: 180px;
+    z-index: 200;
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+
+  .toolbar-popover-panel[hidden] {
+    display: none;
+  }
+
+  .popover-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px;
+    font-size: 13px;
+    transition: background 0.1s;
+  }
+
+  .popover-row:hover {
+    background: #F3F4F6;
+  }
+
+  .popover-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex: 0 0 auto;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+
+  .popover-label {
+    flex: 1;
+    font-weight: 500;
+    color: #1F2937;
+  }
+
+  .popover-count {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--cyan);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  /* ★ 2026-08-05: 操作区 (后续加按钮, flex 1 推提示到最右) */
+  .toolbar-actions {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+    margin: 0 12px;
+    min-width: 0;
+  }
+
+  .toolbar-actions:empty {
+    margin: 0;
+  }
+
+  /* ★ 2026-08-05: 提示区 (右侧, 跟操作区 12px 间距) */
+  .toolbar-hint {
+    font-size: 12px;
+    opacity: 0.85;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* ========== Tree Viewport ========== */
+  .tree-viewport {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    background:
+      linear-gradient(rgba(90,164,174,0.03) 1px, transparent 1px) 0 0 / 24px 24px,
+      linear-gradient(90deg, rgba(90,164,174,0.03) 1px, transparent 1px) 0 0 / 24px 24px,
+      var(--bg-page);
+    cursor: grab;
+  }
+
+  .tree-viewport.panning {
+    cursor: grabbing;
+  }
+
+  .tree-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    padding: 32px;
+    min-width: max-content;
+  }
+
+  /* ========== Tree Node ========== */
+  .tree-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+
+  .tree-node-children {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 32px;
+    padding: 0;
+    position: relative;
+  }
+  /* 父到子节点的连接线 */
+  .tree-node-children::before {
+    content: '';
+    position: absolute;
+    top: -32px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--border, #D6ECF0);
+  }
+  .tree-node-children > .tree-node {
+    position: relative;
+  }
+  .tree-node-children > .tree-node::before {
+    content: '';
+    position: absolute;
+    top: -32px;
+    left: 50%;
+    width: 1px;
+    height: 32px;
+    background: var(--border, #D6ECF0);
+    transform: translateX(-50%);
+  }
+
+  .tree-node-collapsed > .tree-node-body > .tree-node-toggle {
+    transform: rotate(-90deg);
+  }
+  /* ★ 2026-08-05: PR #29 — 修 toggle 折叠 bug
+     根因: PR #22 删 4 按钮时, 漏补 .tree-node-collapsed 视觉 CSS
+       旧 CSS 只 rotate toggle 按钮, 没隐藏 children 容器
+       导致 toggle 点击 class 加上了, 但 children 容器照常显示
+     修复: collapsed 时 children 容器 display: none
+       + collapsed 节点视觉对: 卡片显示, 按钮 rotated, 子树隐藏 */
+  .tree-node-collapsed > .tree-node-children {
+    display: none;
+  }
+
+  .tree-node-body {
+    display: flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    /* ★ 2026-08-05: PR #23 — 节点卡片宽度从 280-360 改 320-440
+       原因: line2 5 元素 (rank + 4 badges + PV) 在 256px 可用空间里会折行
+       400px 试了, "个人 0" 仍然被裁, 扩到 440px 给 416px 可用空间, 5 badge + PV 一次放下
+       PR #23 v2 经验: line2 元素总宽 ≈ 90+50+30+30+24+135 = 359px, 容器内至少需要 360+gap */
+    min-width: 320px;
+    max-width: 440px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    transition: all 0.15s;
+    cursor: default;
+  }
+
+  .tree-node-body:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+
+  .tree-node-body.ultimate { background: var(--bg-card-ultimate); }
+  .tree-node-body.elite { background: var(--bg-card-elite); }
+  .tree-node-body.business { background: var(--bg-card-business); }
+  .tree-node-body.member { background: var(--bg-card-member); }
+
+  .tree-node-toggle {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.05);
+    border: none;
+    color: var(--text-secondary);
+    font-size: 10px;
+    cursor: pointer;
+    margin-right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+  }
+
+  .tree-node-toggle:hover {
+    background: rgba(0,0,0,0.1);
+  }
+
+  .tree-node-toggle.empty {
+    visibility: hidden;
+  }
+
+  .tree-node-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ★ 2026-08-05: PR #28 — L2+ 节点空槽位虚线占位
+     业务: 从 L2 开始, 5 个 line 子槽位都画, 没挂人的显示 available
+     视觉: 跟节点卡片同高 (1 line 高度 33px), 虚线边框, 灰色, 区分"没人" vs "节点卡片"
+     内容: "available" label + "L{depth+1}~N{parent.globalNodeId*5+line}" 标号 */
+  .tree-node-available {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 200px;
+    max-width: 320px;
+    height: 33px;
+    padding: 4px 12px;
+    border: 1px dashed #94A3B8;
+    border-radius: 8px;
+    background: rgba(148, 163, 184, 0.05);
+    color: var(--text-secondary, #64748B);
+    font-size: 11px;
+    flex: 0 0 auto;
+    cursor: default;
+  }
+  .tree-node-available:hover {
+    background: rgba(148, 163, 184, 0.12);
+    border-color: #64748B;
+  }
+  .tree-node-available-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #94A3B8;
+  }
+  .tree-node-available-id {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: #475569;
+    font-weight: 500;
+  }
+
+  /* ★ 2026-08-05: PR #23 — 节点卡片标签重设计
+     统一体系: 14px 名字 / 11px 文字 / 10px badge
+     统一 badge 风格: 10px + 2px 8px padding + 4px radius + 700 weight
+     line1/line2 flex nowrap, 文字过长自动 ellipsis */
+
+  .tree-node-line1 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .tree-node-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .tree-node-distid {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
+  /* ★ 2026-08-05: PR #24 — global_node_id badge (tree 公式 or 5 叉 own 10000+) */
+  .tree-node-globalid {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    white-space: nowrap;
+    flex: 0 0 auto;
+    line-height: 1.4;
+  }
+  .tree-node-globalid.real {
+    /* tree 公式编号 (1-4093, 跟 tree_l1_4_l10 一致) */
+    color: #475569;
+    background: #F1F5F9;
+  }
+  .tree-node-globalid.five-own {
+    /* 5 叉 own 编号 (10000+, 跟 tree 公式脱钩, 标识 line 3-5 子) */
+    color: #6D28D9;
+    background: #EDE9FE;
+    border: 1px solid #C4B5FD;
+  }
+
+  /* ★ 2026-08-05: 统一所有 badge 基础样式 (depth/biz/slot/rank/badge) */
+  .tree-node-depth,
+  .tree-node-biz,
+  .tree-node-slot,
+  .tree-node-rank,
+  .tree-node-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    line-height: 1.4;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
+  /* L 标号 (PR #21 拆出) — 灰色 */
+  .tree-node-depth {
+    color: #475569;
+    background: #F1F5F9;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  /* 业务色 (PR #21 完整英文) */
+  .tree-node-biz {
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .tree-node-biz.ultimate { background: var(--gold); color: #5A4500; }
+  .tree-node-biz.elite    { background: var(--blue);  color: #FFFFFF; }
+  .tree-node-biz.business { background: var(--green); color: #FFFFFF; }
+  .tree-node-biz.member   { background: var(--text-secondary); color: #FFFFFF; }
+
+  /* slot 点位 (PR #20) — 紫色 */
+  .tree-node-slot {
+    color: #6D28D9;
+    background: #EDE9FE;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  /* line2 容器 — 跟 line1 风格一致 */
+  .tree-node-line2 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  /* rank (e.g. CHAIRPERSON2) — 灰色背景, 保留原大小写 */
+  .tree-node-rank {
+    background: rgba(0,0,0,0.08);
+    color: var(--text-primary);
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  /* 4 类小徽章 (GOLD/IIX/√Q/no gold) */
+  .tree-node-badge.gold  { background: var(--gold);   color: #5A4500; }
+  .tree-node-badge.iix   { background: var(--purple); color: #FFFFFF; }
+  .tree-node-badge.qual  { background: var(--blue);   color: #FFFFFF; }
+  .tree-node-badge.muted {
+    background: rgba(0,0,0,0.05);
+    color: var(--text-muted);
+  }
+
+  /* PV 数字 — 11px 跟 distId 字号一致, monospace 数字易读 */
+  .tree-node-pv {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tree-node-pv b {
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+
+  /* 旧 .tree-node-level 类兼容 (PR #20 之前用, 现在 depth+biz 拆开) */
+  .tree-node-level {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 700;
+    color: #FFFFFF;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.4;
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+  .tree-node-level.ultimate { background: var(--gold); color: #5A4500; }
+  .tree-node-level.elite    { background: var(--blue); }
+  .tree-node-level.business { background: var(--green); }
+  .tree-node-level.member   { background: var(--text-secondary); }
+
+  /* ========== Zoom Controls ========== */
+  .zoom-controls {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 4px;
+    z-index: 50;
+  }
+
+  .zoom-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 18px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+
+  .zoom-btn:hover { background: rgba(0,0,0,0.05); }
+  .zoom-btn:active { background: rgba(0,0,0,0.1); }
+
+  .zoom-display {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .zoom-display:hover { background: rgba(0,0,0,0.05); }
+
+  /* ========== Loading ========== */
+  .loading {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(90,164,174,0.2);
+    border-top-color: var(--cyan);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 12px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ========== Error ========== */
+  .error {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #FEE2E2;
+    color: var(--red);
+    padding: 16px 24px;
+    border-radius: 8px;
+    border: 1px solid #FECACA;
+    font-size: 14px;
+    max-width: 480px;
+  }
+</style>
+<link rel="stylesheet" href="/static/original_tree_minimap.css">
+</head>
+<body>
+
+<!-- ★ 2026-08-05: 横条重设计 (PR #22) — 5 段式: 品牌 + 数据 + 业务色 popover + 操作区 + 提示 -->
+<div class="toolbar">
+  <div class="toolbar-title">
+    <span class="toolbar-title-icon">🌳</span>原版网体
+  </div>
+
+  <!-- 1. 数据区 (3 stat) -->
+  <div class="toolbar-stats" id="stats">
+    <div class="toolbar-stat">总节点 <b id="statTotal">-</b></div>
+    <div class="toolbar-stat">最大深度 <b id="statDepth">-</b></div>
+    <div class="toolbar-stat">可见 <b id="statVisible">-</b></div>
+  </div>
+
+  <!-- 2. 业务色 popover (4 业务色合并到一个下拉) -->
+  <div class="toolbar-popover" id="bizPopover">
+    <button class="toolbar-popover-trigger" id="bizPopoverTrigger" type="button" aria-haspopup="true" aria-expanded="false" title="查看 4 业务色分布">
+      <span class="trigger-icon">🎨</span>业务色 <span class="trigger-caret">▾</span>
+    </button>
+    <div class="toolbar-popover-panel" id="bizPopoverPanel" role="menu" hidden>
+      <div class="popover-row" data-level="ULTIMATE">
+        <span class="popover-swatch" style="background:#F0C239"></span>
+        <span class="popover-label">ULTIMATE</span>
+        <span class="popover-count" id="bizCountUlt">-</span>
+      </div>
+      <div class="popover-row" data-level="ELITE">
+        <span class="popover-swatch" style="background:#5AA4AE"></span>
+        <span class="popover-label">ELITE</span>
+        <span class="popover-count" id="bizCountElite">-</span>
+      </div>
+      <div class="popover-row" data-level="BUSINESS">
+        <span class="popover-swatch" style="background:#10B981"></span>
+        <span class="popover-label">BUSINESS</span>
+        <span class="popover-count" id="bizCountBiz">-</span>
+      </div>
+      <div class="popover-row" data-level="MEMBER">
+        <span class="popover-swatch" style="background:#94A3B8"></span>
+        <span class="popover-label">MEMBER</span>
+        <span class="popover-count" id="bizCountMem">-</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 操作区 (后续加按钮预留, 现在空) -->
+  <div class="toolbar-actions" id="toolbarActions">
+    <!-- 后续按钮加这里, e.g. 搜索/导出/折叠全部 -->
+  </div>
+
+  <!-- 4. 提示区 (右侧) -->
+  <span class="toolbar-hint">🖐 按住右键拖动 · Ctrl+滚轮缩放</span>
+</div>
+
+<div class="original-tree-layout">
+  <main class="main-view-panel">
+    <div class="tree-viewport" id="viewport">
+      <div class="tree-container" id="treeContainer">
+        <div class="loading">
+          <div class="loading-spinner"></div>
+          加载 json/original_tree.json …
+        </div>
+      </div>
+    </div>
+  </main>
+  <aside class="minimap-panel" id="minimapPanel">
+    <div class="minimap-header">
+      <span>网体缩略</span>
+      <span id="minimapStats" style="font-weight:400;color:#64748B"></span>
+    </div>
+    <!-- ★ 2026-08-05: 业务色图例 (独立区, 不跟 L 标号混) -->
+    <div class="minimap-legend" id="minimapLegend"></div>
+    <div class="minimap-svg-container" id="minimapSvgContainer">
+      <svg class="minimap-svg" id="minimapSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </aside>
+</div>
+
+<div class="zoom-controls">
+  <button class="zoom-btn" id="zoomIn" title="放大 (Ctrl++)">+</button>
+  <div class="zoom-display" id="zoomDisplay" title="点击重置 100%">100%</div>
+  <button class="zoom-btn" id="zoomOut" title="缩小 (Ctrl+-)">−</button>
+  <button class="zoom-btn" id="zoomFit" title="适应窗口" style="border-top: 1px solid var(--border);">⤢</button>
+</div>
+
+<script>
+  // ========== State ==========
+  const state = {
+    data: null,
+    zoom: 1,
+    panX: 32,
+    panY: 32,
+    stats: { total: 0, maxDepth: 0, byLevel: {} },
+    maxAutoExpand: 2,  // 默认展开到 L2
+  };
+
+  // ★ 2026-08-04: viewport state (minimap 蓝框订阅这个)
+  const viewportState = {
+    scale: 1,        // 主视图当前 zoom 比例
+    offsetX: 0,      // 主视图 pan 偏移 (px)
+    offsetY: 0,      // 主视图 pan 偏移 (px)
+    naturalW: 0,     // 主视图 SVG 内容的自然宽度 (px, 未缩放)
+    naturalH: 0,     // 主视图 SVG 内容的自然高度 (px, 未缩放)
+    containerW: 0,   // 主视图容器可视宽 (px)
+    containerH: 0,   // 主视图容器可视高 (px)
+  };
+
+  // 通知订阅者 (minimap 用)
+  const _viewportSubscribers = new Set();
+  function subscribeViewport(fn) { _viewportSubscribers.add(fn); return () => _viewportSubscribers.delete(fn); }
+  function emitViewport() {
+    for (const fn of _viewportSubscribers) {
+      try { fn(viewportState); } catch (e) { console.warn('[viewport sub] error', e); }
+    }
+  }
+
+  // ========== Load Data ==========
+  async function loadData() {
+    try {
+      const resp = await fetch('/api/original_tree/data');
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      state.data = await resp.json();
+      render();
+    } catch (e) {
+      showError('加载失败: ' + e.message);
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById('treeContainer').innerHTML =
+      `<div class="error">❌ ${escapeHtml(msg)}</div>`;
+  }
+
+  // ========== Stats ==========
+  function computeStats(node, depth = 0) {
+    state.stats.total++;
+    state.stats.maxDepth = Math.max(state.stats.maxDepth, depth);
+    const lvl = (node.businessLevel || 'MEMBER').toUpperCase();
+    state.stats.byLevel[lvl] = (state.stats.byLevel[lvl] || 0) + 1;
+    for (const c of (node.children || [])) {
+      computeStats(c, depth + 1);
+    }
+  }
+
+  function updateStats() {
+    document.getElementById('statTotal').textContent = state.stats.total;
+    document.getElementById('statDepth').textContent = state.stats.maxDepth;
+    // ★ 2026-08-05: 业务色计数填到 popover 4 行
+    document.getElementById('bizCountUlt').textContent   = state.stats.byLevel['ULTIMATE'] || 0;
+    document.getElementById('bizCountElite').textContent = state.stats.byLevel['ELITE']    || 0;
+    document.getElementById('bizCountBiz').textContent   = state.stats.byLevel['BUSINESS'] || 0;
+    document.getElementById('bizCountMem').textContent   = state.stats.byLevel['MEMBER']   || 0;
+    // 兼容 PR #20: minimap 顶部还有独立色卡图例, 保留 updateLegend()
+    updateLegend();
+    // 注: "可见" stat 字段在 render() 末尾 updateVisibleCount() 填, 不在这里 (DOM 还没渲染)
+  }
+
+  // ★ 2026-08-05: 业务色 popover 交互 (PR #22)
+  // - 点击 trigger 切换 panel
+  // - 点击 panel 外部 / 按 ESC 收起
+  // - 用 aria-expanded 标记状态
+  function initBizPopover() {
+    const trigger = document.getElementById('bizPopoverTrigger');
+    const panel   = document.getElementById('bizPopoverPanel');
+    if (!trigger || !panel) return;
+
+    function setOpen(open) {
+      trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) {
+        panel.removeAttribute('hidden');
+      } else {
+        panel.setAttribute('hidden', '');
+      }
+    }
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = trigger.getAttribute('aria-expanded') === 'true';
+      setOpen(!isOpen);
+    });
+
+    // 点击 panel 外部收起
+    document.addEventListener('click', (e) => {
+      const popover = document.getElementById('bizPopover');
+      if (!popover) return;
+      if (!popover.contains(e.target)) setOpen(false);
+    });
+
+    // ESC 收起
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    });
+  }
+
+  // DOM ready 后初始化 popover 交互
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBizPopover);
+  } else {
+    initBizPopover();
+  }
+
+  // ★ 2026-08-05: 渲染 4 业务色图例 — 独立区 (在 minimap header 下, svg 上)
+  function updateLegend() {
+    const el = document.getElementById('minimapLegend');
+    if (!el) return;
+    const BIZ = [
+      { key: 'ULTIMATE', label: 'ULTIMATE', color: '#F0C239' },
+      { key: 'ELITE',    label: 'ELITE',    color: '#5AA4AE' },
+      { key: 'BUSINESS', label: 'BUSINESS', color: '#10B981' },
+      { key: 'MEMBER',   label: 'MEMBER',   color: '#94A3B8' },
+    ];
+    el.innerHTML = BIZ.map(b => {
+      const cnt = state.stats.byLevel[b.key] || 0;
+      return `<span class="legend-item">
+        <span class="legend-swatch" style="background:${b.color}"></span>
+        <span class="legend-label">${b.label}</span>
+        <span class="legend-count">${cnt}</span>
+      </span>`;
+    }).join('');
+  }
+
+  // ★ 2026-08-05: 按位反转 BFS 序 — 给每个节点算 global slot 序号
+  // 算法: 同 depth 内, 子节点按 base-5 bit_reverse 顺序访问 (跟 PR #11 算法 v4 一致)
+  // 例: 5 叉树 L1 (4 个 child), bit_reverse 顺序 = [0, 1, 2, 3] (4 个 < 5, 自身)
+  //     5 叉树 L2 (5 个 child), bit_reverse 顺序 = [0, 4, 3, 2, 1]
+  //                       (i=0:000→000=0, i=1:001→100=4, i=2:010→010=2... wait 算法对)
+  // 实际 _bit_reverse_base_b(i, bits=1, base=5): i=0..4 各自反转 1 位 → 自身
+  // 实际 _bit_reverse_base_b(i, bits=2, base=5): i=0..24, 反转 2 位 (i 拆成 d0 + d1*5, 倒序 d1*5 + d0)
+  function _bit_reverse_base_b(n, bits, base = 5) {
+    if (n < 0 || n >= base ** bits) return n;
+    let result = 0;
+    for (let b = 0; b < bits; b++) {
+      const d = Math.floor(n / base ** b) % base;
+      result = result * base + d;
+    }
+    return result;
+  }
+  // ★ 2026-08-05: PR #31 — tree 公式 (base=2) bit_reverse + predictAvailN
+  // 跟后端 skills/lx_node_id.py (PR #24) 算法一致, 用于 avail 占位预测 N
+  // 业务 (用户拍板 2026-08-05): 1 子时补 1 槽, 用 predictAvailN 算具体 N (tree 公式), 不写 X
+  // 5 叉业务 line 1-2 走 tree 公式 (2 叉 BFS, 跟 PR #11 base=5 不同)
+  // 例: 王梦姣 (L2~10, bfs 1) line 2 子 → 14 + bit_reverse(3, 4) = 14 + 12 = 26 (跟用户截图 L3~26 一致)
+  function _bit_reverse2(n, bits) {
+    let result = 0;
+    for (let b = 0; b < bits; b++) {
+      result = (result << 1) | (n & 1);
+      n >>= 1;
+    }
+    return result;
+  }
+  function _level_first_last(level) {
+    if (level === 0) return [1, 1, 1];
+    const first = 2 ** (level + 1) - 2;
+    const count = 2 ** (level + 1);
+    return [first, first + count - 1, count];
+  }
+  function _inverse_bit_reverse2(r, bits) {
+    // 找 n 使 _bit_reverse2(n, bits) === r
+    const count = 1 << bits;
+    for (let n = 0; n < count; n++) {
+      if (_bit_reverse2(n, bits) === r) return n;
+    }
+    return -1;
+  }
+  function predictAvailN(parentNodeId, parentLevel, line) {
+    // parentLevel: 0-indexed (0=root, 1=L1 父, 2=L2 父, ...)
+    // line: 1-2 (5 叉业务 line 1-2 走 tree 公式)
+    // 返回 child 的 globalNodeId (tree 公式)
+    if (parentLevel === 0) return 1;  // root → 1 (但实际不调, 防御性)
+    const k = parentLevel;
+    const [pFirst] = _level_first_last(k);
+    const pBits = k + 1;
+    const r = parentNodeId - pFirst;
+    const parentBfs = _inverse_bit_reverse2(r, pBits);
+    if (parentBfs < 0) return null;
+    const childLevel = k + 1;
+    const childBfs = 2 * parentBfs + (line - 1);  // 2 叉 tree 公式
+    const [cFirst] = _level_first_last(childLevel);
+    const cBits = childLevel + 1;
+    return cFirst + _bit_reverse2(childBfs, cBits);
+  }
+  function computeSlotMap(root) {
+    // BFS, 每层用 bit_reverse 顺序访问 child
+    const map = new Map();  // distId -> slot
+    let slot = 0;
+    const queue = [root];
+    let currentDepth = 0;
+    let currentLevel = [root];
+    while (currentLevel.length > 0) {
+      const nextLevel = [];
+      // 同 depth 内: 按 children 数组顺序遍历 (已经是 bit_reverse 顺序从后端)
+      for (const node of currentLevel) {
+        map.set(node.distId, slot);
+        slot++;
+        for (const c of (node.children || [])) {
+          nextLevel.push(c);
+        }
+      }
+      currentLevel = nextLevel;
+      currentDepth++;
+    }
+    return map;
+  }
+
+  // ========== Render Tree ==========
+  function render() {
+    if (!state.data) return;
+    computeStats(state.data);
+    updateStats();
+    // ★ 2026-08-05: 算按位反转 BFS slot 序号
+    state.slotMap = computeSlotMap(state.data);
+    const root = renderNode(state.data, 0);
+    const container = document.getElementById('treeContainer');
+    container.innerHTML = '';
+    container.appendChild(root);
+    applyTransform();
+    updateZoomDisplay();
+    renderMinimap();  // ★ 2026-08-04: 同步渲染缩略图
+    // ★ 2026-08-05: DOM 渲染完后, 算 "可见" stat 字段 (PR #22 保留)
+    updateVisibleCount();
+  }
+
+  function renderNode(node, depth) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tree-node';
+    if (depth > state.maxAutoExpand) {
+      wrapper.classList.add('tree-node-collapsed');
+    }
+
+    const children = node.children || [];
+    const hasChildren = children.length > 0;
+    const lvl = (node.businessLevel || 'MEMBER').toUpperCase();
+    const lvlClass = lvl.toLowerCase();
+    const name = node.name || '(无名)';
+    const distId = node.distId || '';
+    const rank = node.rank || '';
+    const gold = node.gold === 'YES';
+    const iix = node.iix === 'YES';
+    const sub = node.has_subscription === 'T';
+    const qual = node.is_qualified === 'T';
+    const orgPv = parseInt(node.org_pv || 0);
+    const persPv = parseInt(node.personal_customer_pv || 0);
+    const statusColor = node.status_color || 'GRAY';
+    const line = node.level || '';
+    // ★ 2026-08-05: 业务规则 — "最上面的 Root 节点算 L0"
+    // 渲染时按树形 depth 重新编号 (depth 0 = L0, depth 1 = L1, ...), 不用 JSON 的 level 字段
+    // (JSON 顶层节点的 level 字段是数据本身的 metadata, 跟"在我的树里是第几层"无关)
+    const treeDepth = depth;  // 跟 renderNode 第二参数对齐, root=0
+    const maxLines = node.maxLines || '?';
+    const parentLineId = node.parentLineId || '';
+
+    // Body (卡片)
+    const body = document.createElement('div');
+    body.className = `tree-node-body ${lvlClass}`;
+    if (node.distId) body.setAttribute('data-dist-id', node.distId);
+
+    // Toggle button
+    const toggle = document.createElement('button');
+    toggle.className = 'tree-node-toggle' + (hasChildren ? '' : ' empty');
+    toggle.textContent = '▼';
+    if (hasChildren) {
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        wrapper.classList.toggle('tree-node-collapsed');
+        updateVisibleCount();
+      });
+    }
+    body.appendChild(toggle);
+
+    // Info
+    const info = document.createElement('div');
+    info.className = 'tree-node-info';
+
+    // Line 1: name + level + distId
+    const line1 = document.createElement('div');
+    line1.className = 'tree-node-line1';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'tree-node-name';
+    nameSpan.textContent = name;
+    line1.appendChild(nameSpan);
+    // 业务色: 单独, 业务色背景 + 完整英文 (用户原话: "ULT 写完整英文")
+    if (lvl) {
+      const bizSpan = document.createElement('span');
+      bizSpan.className = `tree-node-biz ${lvlClass}`;
+      bizSpan.textContent = lvl;  // 完整: ULTIMATE / ELITE / BUSINESS / MEMBER
+      line1.appendChild(bizSpan);
+    }
+    if (distId) {
+      const distSpan = document.createElement('span');
+      distSpan.className = 'tree-node-distid';
+      distSpan.textContent = distId;
+      line1.appendChild(distSpan);
+    }
+    // ★ 2026-08-05: PR #27 — L 标号 + globalNodeId 合并 "L{depth}~{id}" badge
+    // 业务需求: 用户原话 "把 L2 和 N12 放一起, 可以写成 L2~12"
+    //   L = 当前层 (depth, depth 0 = L0 root)
+    //   {id} = globalNodeId (PR #24 tree 公式 1-4093, 跟 5 叉 own 10000+ 区分)
+    //   ~ 连接, 灰色 (#F1F5F9) SF Mono, 跟原 L 标号同色系
+    // 拍板: 用户截图 2026-08-05 选 "只留 L2~12, 删独立 N12 badge" (合并 badge 替代 N 标号)
+    // 例: 黄平 (L2, N12) → "L2~12"
+    //     王常军 (L5, N84) → "L5~84"
+    //     5 叉 own: "L5~5×13142" (5 叉业务 line 3-5 子, 5× 前缀区分)
+    if (treeDepth >= 0 && node.globalNodeId != null) {
+      const gidSpan = document.createElement('span');
+      if (node.is5Own) {
+        // 5 叉 own: 5 叉业务 line 3-5 子, 跟 tree 公式脱钩 (10000+)
+        gidSpan.className = 'tree-node-globalid five-own';
+        gidSpan.textContent = `L${treeDepth}~5×${node.globalNodeId}`;
+        gidSpan.title = `当前层: L${treeDepth} | 5 叉 own 编号: ${node.globalNodeId}\n5 叉业务 line 3-5 子, BFS 位置超界 tree 公式, 5 叉 own BFS = parent_bfs*5 + line-1\n编号 = 10000 + 5^child_level + 5_own_bfs`;
+      } else {
+        // tree 公式: 跟 tree_l1_4_l10 位反转公式一致 (1-4093)
+        gidSpan.className = 'tree-node-globalid real';
+        gidSpan.textContent = `L${treeDepth}~${node.globalNodeId}`;
+        gidSpan.title = `当前层: L${treeDepth} | tree_l1_4_l10 位反转公式编号: ${node.globalNodeId}\nfirst=2^(k+1)-2, bits=k+1, 编号=first+bit_reverse(BFS_pos, bits)`;
+      }
+      line1.appendChild(gidSpan);
+    }
+    // ★ 2026-08-05: 点位数 (按位反转 BFS 全局序号)
+    if (state.slotMap && distId && state.slotMap.has(distId)) {
+      const slotSpan = document.createElement('span');
+      slotSpan.className = 'tree-node-slot';
+      slotSpan.textContent = `slot ${state.slotMap.get(distId)}`;
+      slotSpan.title = '按位反转 BFS 全局序号 (PR #11 算法 v4)';
+      line1.appendChild(slotSpan);
+    }
+    info.appendChild(line1);
+
+    // Line 2: rank + badges + PV
+    const line2 = document.createElement('div');
+    line2.className = 'tree-node-line2';
+    if (rank) {
+      const rankSpan = document.createElement('span');
+      rankSpan.className = 'tree-node-rank';
+      rankSpan.textContent = rank;
+      line2.appendChild(rankSpan);
+    }
+    if (gold) {
+      const b = document.createElement('span');
+      b.className = 'tree-node-badge gold';
+      b.textContent = '🥇GOLD';
+      line2.appendChild(b);
+    } else {
+      const b = document.createElement('span');
+      b.className = 'tree-node-badge muted';
+      b.textContent = 'no gold';
+      line2.appendChild(b);
+    }
+    if (iix) {
+      const b = document.createElement('span');
+      b.className = 'tree-node-badge iix';
+      b.textContent = 'IIX';
+      line2.appendChild(b);
+    }
+    if (qual) {
+      const b = document.createElement('span');
+      b.className = 'tree-node-badge qual';
+      b.textContent = '✓Q';
+      line2.appendChild(b);
+    }
+    if (orgPv > 0 || persPv > 0) {
+      const pvSpan = document.createElement('span');
+      pvSpan.className = 'tree-node-pv';
+      pvSpan.innerHTML = `组织 <b>${orgPv.toLocaleString()}</b> · 个人 <b>${persPv.toLocaleString()}</b>`;
+      line2.appendChild(pvSpan);
+    }
+    info.appendChild(line2);
+
+    body.appendChild(info);
+    wrapper.appendChild(body);
+
+    // Children
+    if (hasChildren) {
+      const childContainer = document.createElement('div');
+      childContainer.className = 'tree-node-children';
+      // ★ 2026-08-05: PR #30/PR #31 — L2+ 节点画 2 槽 (撤回 PR #28 5 槽)
+      // 业务 (用户拍板 2026-08-05):
+      //   - L2 开始 (depth >= 2) 只画 2 叉 (line 1-2)
+      //     5 叉业务实际只有 2 叉 (root eff=2 限制, line 1-2 解锁, line 3-5 不可挂)
+      //     PR #28 画 5 槽 + 3 avail 是误导 (line 3-5 永远不可挂, 视觉上让用户以为有)
+      //   - 1 子: 补 1 槽, 用 predictAvailN(parent.globalNodeId, depth, line) 算具体 N
+      //     例: 王梦姣 (L2~10) line 2 子 → L3~26 (跟 PR #24 tree 公式一致)
+      //   - 0 子: 补 2 槽, 都用 predictAvailN 算 (实际 0 子不太常见, 防御性)
+      //   - 2 子: 2 槽都有数据, 不画 avail
+      //   - ≥3 子 (防御性, eff=2 不会): 选 2 个有孙子的优先, 剩下的标 "L{depth+1}~X"
+      // L0 (depth 0) + L1 (depth 1): 按实际挂人显示 (不画 2 槽, 保持原样)
+      if (depth >= 2) {
+        // 按 parentLineId 分桶 (1-2)
+        const byLine = new Map();
+        const overflow = [];
+        for (const c of children) {
+          const lid = parseInt(c.parentLineId || '0', 10);
+          if (lid >= 1 && lid <= 2) {
+            byLine.set(lid, c);
+          } else {
+            // line 3+ (防御性, 理论不会)
+            overflow.push(c);
+          }
+        }
+        // 2 槽循环
+        for (let line = 1; line <= 2; line++) {
+          const child = byLine.get(line);
+          if (child) {
+            childContainer.appendChild(renderNode(child, depth + 1));
+          } else {
+            // available 虚线占位
+            // PR #31: 1 子时, 补的 line 用 predictAvailN 算具体 N
+            //   公式: predictAvailN(parent.globalNodeId, parentLevel=depth, line)
+            //   跟后端 skills/lx_node_id.py PR #24 tree 公式一致
+            // 例: 王梦姣 (parent.globalNodeId=10, depth=2, line=2) → 26
+            // PR #30: 0 子或 ≥3 子时, 标 L~X (没 N)
+            //   0 子: 2 个 avail 都标 L~X (实际不常见)
+            //   ≥3 子: line 1-2 都用 children 的, 不用 predictAvailN (overflow 防御)
+            const childDepth = depth + 1;
+            let availN;
+            let tooltipExtra;
+            if (children.length === 1) {
+              // 1 子: predictAvailN 算 N
+              const parentN = node.globalNodeId || 0;
+              availN = predictAvailN(parentN, depth, line);
+              if (availN == null) {
+                availN = 'X';  // fallback (算不出来)
+                tooltipExtra = `predictAvailN failed: parent.globalNodeId=${parentN}, parentLevel=${depth}`;
+              } else {
+                tooltipExtra = `available slot (预测)\nline=${line} | parent.globalNodeId=${parentN}, parentLevel=${depth}\ntree 公式 BFS 续 (跟 PR #24 lx_node_id.py 一致)\n如果挂人, 此槽节点的 globalNodeId 会是 ${availN}`;
+              }
+            } else {
+              // 0 子 / ≥3 子 (防御性): 标 X
+              availN = 'X';
+              tooltipExtra = `available slot\nline=${line} | 2 叉业务, 此槽当前未挂人\n无 globalNodeId (X 表示 "无编号")`;
+            }
+            const availSlot = document.createElement('div');
+            availSlot.className = 'tree-node-available';
+            const availLabel = document.createElement('span');
+            availLabel.className = 'tree-node-available-label';
+            availLabel.textContent = 'available';
+            const availId = document.createElement('span');
+            availId.className = 'tree-node-available-id';
+            availId.textContent = `L${childDepth}~${availN}`;
+            availSlot.appendChild(availLabel);
+            availSlot.appendChild(availId);
+            availSlot.title = tooltipExtra;
+            childContainer.appendChild(availSlot);
+          }
+        }
+        // 防御性: overflow (children > 2 才会触发, 实际 eff=2 不会)
+        // 选 2 个有孙子的优先, 剩下的清空 globalNodeId 后画 (没 N, 标 L~X)
+        if (overflow.length > 0) {
+          // 按 "有孙子" 排序
+          overflow.sort((a, b) => {
+            const aHas = (a.children || []).length > 0 ? 1 : 0;
+            const bHas = (b.children || []).length > 0 ? 1 : 0;
+            return bHas - aHas;  // 有孙子的优先
+          });
+          // 全部画 (没 N, 标 L~X)
+          for (const c of overflow) {
+            // 临时复制 + 清空 globalNodeId, renderNode 不会显示 N
+            const cCopy = { ...c, globalNodeId: null };
+            childContainer.appendChild(renderNode(cCopy, depth + 1));
+          }
+        }
+      } else {
+        // L0 (root) + L1 父: 按实际挂人显示 (不画 2 槽)
+        for (const c of children) {
+          childContainer.appendChild(renderNode(c, depth + 1));
+        }
+      }
+      wrapper.appendChild(childContainer);
+    }
+
+    return wrapper;
+  }
+
+  function updateVisibleCount() {
+    const visible = document.querySelectorAll('.tree-node:not(.tree-node-collapsed)').length;
+    document.getElementById('statVisible').textContent = visible;
+  }
+
+  // ========== Zoom & Pan ==========
+  function applyTransform() {
+    const c = document.getElementById('treeContainer');
+    c.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
+    // ★ 2026-08-04: emit viewport state for minimap
+    const vp = document.getElementById('viewport');
+    if (vp) {
+      viewportState.scale = state.zoom;
+      viewportState.offsetX = state.panX;
+      viewportState.offsetY = state.panY;
+      viewportState.naturalW = c.offsetWidth;
+      viewportState.naturalH = c.offsetHeight;
+      viewportState.containerW = vp.offsetWidth;
+      viewportState.containerH = vp.offsetHeight;
+      emitViewport();
+    }
+  }
+
+  function updateZoomDisplay() {
+    document.getElementById('zoomDisplay').textContent = Math.round(state.zoom * 100) + '%';
+  }
+
+  function setZoom(z, centerX, centerY) {
+    const old = state.zoom;
+    state.zoom = Math.max(0.2, Math.min(3, z));
+    if (centerX !== undefined && centerY !== undefined) {
+      // zoom around point
+      const ratio = state.zoom / old;
+      state.panX = centerX - (centerX - state.panX) * ratio;
+      state.panY = centerY - (centerY - state.panY) * ratio;
+    }
+    applyTransform();
+    updateZoomDisplay();
+  }
+
+  document.getElementById('zoomIn').addEventListener('click', () => {
+    const v = document.getElementById('viewport');
+    const r = v.getBoundingClientRect();
+    setZoom(state.zoom * 1.2, r.width / 2, r.height / 2);
+  });
+  document.getElementById('zoomOut').addEventListener('click', () => {
+    const v = document.getElementById('viewport');
+    const r = v.getBoundingClientRect();
+    setZoom(state.zoom / 1.2, r.width / 2, r.height / 2);
+  });
+  document.getElementById('zoomDisplay').addEventListener('click', () => {
+    state.zoom = 1;
+    state.panX = 32;
+    state.panY = 32;
+    applyTransform();
+    updateZoomDisplay();
+  });
+  document.getElementById('zoomFit').addEventListener('click', () => {
+    fitToScreen();
+  });
+
+  function fitToScreen() {
+    const v = document.getElementById('viewport');
+    const c = document.getElementById('treeContainer');
+    const r = v.getBoundingClientRect();
+    // ★ 2026-08-05: PR #26 修复蓝框 bug — 改 "整树 fit 视口" 算法
+    // 旧算法 (PR #14 vertical): "root 视觉占视口 30% 高度" + max z=1
+    //   实际 root 61px / 视口 1024px = 6%, 业务目标 30% 永远满足不了
+    //   整树水平 52694px 远超视口 1344px, max z=1 限制让 z=1, 整树水平完全装不下
+    //   蓝框算 "主视图可视区在 minimap 投影", 整树水平 extent 远超可视区,
+    //   蓝框只能覆盖 minimap 一小块 (业务 X ~30~500), 看起来"一直在左侧"
+    // 新算法: 整树 fit 视口高度 (水平允许裁切, 用户 pan 探索)
+    //   treeH = c.offsetHeight (整树自然高)
+    //   z = (viewportH * 0.92) / treeH (留 8% margin)
+    //   0.1 <= z <= 1 (太小节点看不清, 太大不缩放)
+    //   pan 让 root 水平居中, 垂直顶部留 32px margin
+    state.zoom = 1;
+    state.panX = 0;
+    state.panY = 0;
+    applyTransform();
+    const rootEl = c.firstElementChild;
+    if (!rootEl || !rootEl.classList.contains('tree-node')) return;
+    const rootBody = rootEl.querySelector(':scope > .tree-node-body');
+    if (!rootBody) return;
+    // 整树自然 size (含 padding)
+    const treeW = c.offsetWidth;
+    const treeH = c.offsetHeight;
+    // zoom 按高度 fit (水平允许裁切)
+    let z = (r.height * 0.92) / treeH;
+    z = Math.max(0.1, Math.min(1, z));
+    state.zoom = z;
+    // pan: root 水平居中, 垂直顶部留 32px margin
+    const rootRect = rootBody.getBoundingClientRect();  // reset 后 visual = natural
+    const rootCenterX = rootRect.left + rootRect.width / 2;
+    state.panX = (r.left + r.width / 2) - rootCenterX * z;
+    state.panY = (r.top + 32) - rootRect.top * z;
+    applyTransform();
+    updateZoomDisplay();
+  }
+
+  // Pan with right mouse
+  const viewport = document.getElementById('viewport');
+  let isPanning = false;
+  let panStartX, panStartY;
+  viewport.addEventListener('mousedown', (e) => {
+    if (e.button === 2 || e.button === 0 && e.altKey) {
+      isPanning = true;
+      panStartX = e.clientX - state.panX;
+      panStartY = e.clientY - state.panY;
+      viewport.classList.add('panning');
+      e.preventDefault();
+    }
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (isPanning) {
+      state.panX = e.clientX - panStartX;
+      state.panY = e.clientY - panStartY;
+      applyTransform();
+    }
+  });
+  window.addEventListener('mouseup', () => {
+    if (isPanning) {
+      isPanning = false;
+      viewport.classList.remove('panning');
+    }
+  });
+  viewport.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // Zoom with Ctrl+wheel
+  viewport.addEventListener('wheel', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const r = viewport.getBoundingClientRect();
+      setZoom(state.zoom * (e.deltaY < 0 ? 1.1 : 1/1.1), e.clientX - r.left, e.clientY - r.top);
+    }
+  }, { passive: false });
+
+  // ★ 2026-08-05: PR #22 — 删 4 按钮 (展开/折叠/L1/L2) 业务确认无作用
+  // - btnExpandAll / btnCollapseAll: 之前没作用 (CSS 没实现 .tree-node-collapsed 视觉)
+  // - btnExpandL1 / btnExpandL2: 用户反馈"按钮没有作用"
+  // setMaxExpand 孤儿函数也删了 (state.maxAutoExpand 默认值 2 保留, 业务没引用 setMaxExpand)
+  // 后续如果需要, 按钮加到 .toolbar-actions 容器
+
+  // ========== Util ==========
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  // ========== Init ==========
+  loadData().then(() => {
+    setTimeout(() => {
+      fitToScreen();
+    }, 100);
+  });
+
+  // ★ 2026-08-04: dev/test hook — expose viewport helpers for browser console + Playwright
+  if (typeof window !== 'undefined') {
+    window.subscribeViewport = subscribeViewport;
+    window.viewportState = viewportState;
+    window.emitViewport = emitViewport;
+  }
+
+  // ★ 2026-08-04: minimap layout — 简单 BFS layout
+  // ★ 2026-08-04 vertical: 兄弟竖排, 不同层横排 (siblings stacked vertically, depth layers travel horizontally)
+  // 每层固定 60px 宽 (不再按 subtree 大小变宽), 兄弟条带 4px 高
+  const MINIMAP_NODE_W = 60;    // 节点 width (px) — 每层固定 60px 宽
+  const MINIMAP_NODE_H = 4;     // 节点 height (px) — 横向条带
+  const MINIMAP_GAP_X = 12;     // 层间距 (水平)
+  const MINIMAP_GAP_Y = 1;      // 兄弟间距 (垂直)
+  const MINIMAP_PAD = 8;        // 整树 padding (px)
+
+  function minimapLayout(root) {
+    // 1. BFS 计算每个节点 depth (vertical: 兄弟竖排, depth 横排 — 所有节点统一宽度)
+    const nodes = [];
+    const queue = [{ n: root, depth: 0 }];
+    while (queue.length) {
+      const { n, depth } = queue.shift();
+      nodes.push({ n, depth, w: MINIMAP_NODE_W, h: MINIMAP_NODE_H });
+      for (const c of (n.children || [])) {
+        queue.push({ n: c, depth: depth + 1 });
+      }
+    }
+    // 2. 按 (depth, sibling-index) 算坐标: 层 x = PAD + d * (W + GAP_X), 兄弟 y 累加
+    const byDepth = {};
+    for (const node of nodes) {
+      if (!byDepth[node.depth]) byDepth[node.depth] = [];
+      byDepth[node.depth].push(node);
+    }
+    const maxDepth = Math.max(...Object.keys(byDepth).map(Number));
+    for (let d = 0; d <= maxDepth; d++) {
+      let curY = MINIMAP_PAD;
+      for (const node of (byDepth[d] || [])) {
+        node.x = MINIMAP_PAD + d * (MINIMAP_NODE_W + MINIMAP_GAP_X);
+        node.y = curY;
+        curY += node.h + MINIMAP_GAP_Y;
+      }
+    }
+    // 3. 算总尺寸
+    const totalW = Math.max(...nodes.map(n => n.x + n.w)) + MINIMAP_PAD;
+    const totalH = Math.max(...nodes.map(n => n.y + n.h)) + MINIMAP_PAD;
+    // 4. 算 links (parent-child)
+    const links = [];
+    const nodeByData = new Map(nodes.map(node => [node.n, node]));
+    for (const node of nodes) {
+      for (const c of (node.n.children || [])) {
+        const cn = nodeByData.get(c);
+        if (cn) links.push({ from: node, to: cn });
+      }
+    }
+    return { nodes, links, totalW, totalH, maxDepth };
+  }
+
+  // ★ 2026-08-04: 渲染缩略图 (一次性绘制 303 节点 + links)
+  const MINIMAP_DEGRADE_THRESHOLD = 500;
+
+  function renderMinimap() {
+    if (!state.data) return;
+    const svg = document.getElementById('minimapSvg');
+    if (!svg) return;
+    let layout;
+    try {
+      layout = minimapLayout(state.data);
+    } catch (e) {
+      console.warn('[minimap] layout failed:', e);
+      const container = document.getElementById('minimapSvgContainer');
+      if (container) container.innerHTML = '<div class="minimap-error">缩略图加载失败</div>';
+      return;
+    }
+    // 1. fit-to-width 缩放
+    const container = document.getElementById('minimapSvgContainer');
+    const containerW = container.offsetWidth;
+    const containerH = container.offsetHeight;
+    if (containerW <= 0 || containerH <= 0) {
+      // 容器还没 layout, 延迟一帧
+      requestAnimationFrame(renderMinimap);
+      return;
+    }
+    // 降级 (>500 节点 → 2x2 像素点, 无链接)
+    const degraded = layout.nodes.length > MINIMAP_DEGRADE_THRESHOLD;
+    const fitScale = Math.min(
+      (containerW - 2) / layout.totalW,
+      (containerH - 2) / layout.totalH
+    );
+    // 2. 渲染
+    svg.innerHTML = '';  // clear
+    svg.setAttribute('viewBox', `0 0 ${layout.totalW} ${layout.totalH}`);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    // links 先画 (在节点下面) — 降级时不画
+    if (!degraded) {
+      for (const link of layout.links) {
+        const cx = (link.from.x + link.from.w / 2);
+        const cy = (link.from.y + link.from.h);
+        const tx = (link.to.x + link.to.w / 2);
+        const ty = link.to.y;
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const mx = (cx + tx) / 2;
+        path.setAttribute('d', `M ${cx} ${cy} C ${cx} ${mx}, ${tx} ${mx}, ${tx} ${ty}`);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', '#94A3B8');
+        path.setAttribute('stroke-width', '0.5');
+        path.setAttribute('opacity', '0.3');
+        svg.appendChild(path);
+      }
+    }
+    // 节点
+    const BUSINESS_COLOR = {
+      ULTIMATE: '#F0C239',
+      ELITE: '#5AA4AE',
+      BUSINESS: '#10B981',
+      MEMBER: '#94A3B8',
+    };
+    for (const node of layout.nodes) {
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', node.x);
+      rect.setAttribute('y', node.y);
+      rect.setAttribute('width', degraded ? 2 : node.w);
+      rect.setAttribute('height', degraded ? 2 : node.h);
+      const lvl = (node.n.businessLevel || 'MEMBER').toUpperCase();
+      rect.setAttribute('fill', BUSINESS_COLOR[lvl] || BUSINESS_COLOR.MEMBER);
+      rect.setAttribute('class', 'minimap-node');
+      rect.setAttribute('data-dist-id', node.n.distId || '');
+      rect.setAttribute('data-name', node.n.name || '');
+      rect.setAttribute('data-level', node.depth + 1);
+      rect.setAttribute('data-business-level', lvl);
+      if (degraded) rect.style.cursor = 'default';
+      svg.appendChild(rect);
+    }
+    // stats
+    const stats = document.getElementById('minimapStats');
+    if (stats) {
+      stats.textContent = degraded
+        ? `${layout.nodes.length} 节点 (已降级)`
+        : `${layout.nodes.length} 节点 / ${layout.maxDepth + 1} 层`;
+    }
+    // 存 layout (后续 viewport box 用)
+    window.__minimapLayout = layout;
+    // 触发初始 viewport 渲染
+    emitViewport();
+  }
+
+  // ★ 2026-08-04: 蓝框 — 主视图 viewport 在缩略图上的投影
+  function renderViewportBox(vs) {
+    try {
+      const svg = document.getElementById('minimapSvg');
+      if (!svg) return;
+      const layout = window.__minimapLayout;
+      if (!layout) return;
+      // 1. 删旧蓝框
+      const old = svg.querySelector('.minimap-viewport-box');
+      if (old) old.remove();
+      // 2. 算 main view 的可视区 (按比例 fit 到缩略图 viewBox)
+      // 缩略图 viewBox 用 BFS 业务坐标系 (totalW x totalH)
+      // 主视图坐标用 SVG natural 坐标系 (vs.naturalW x vs.naturalH)
+      // 蓝框位置按比例 fit
+      if (vs.naturalW <= 0 || vs.naturalH <= 0) return;
+      const ratioX = layout.totalW / vs.naturalW;
+      const ratioY = layout.totalH / vs.naturalH;
+      // ★ 2026-08-05: 修复蓝框 bug — 之前用 vs.offsetX (px) 直接当 SVG 自然坐标, 错了
+      // 实际主视图 transform: translate(panX, panY) scale(zoom)
+      // 主视图可视区 (x=0 ~ containerW) 对应 SVG 自然坐标 = (-panX/zoom, (containerW-panX)/zoom)
+      // 可视区起点 (在 SVG 自然坐标) = (-panX/zoom, -panY/zoom)
+      const visX = -vs.offsetX / vs.scale;
+      const visY = -vs.offsetY / vs.scale;
+      const visW = vs.containerW / vs.scale;
+      const visH = vs.containerH / vs.scale;
+      // 投影到 minimap 坐标系
+      const boxX = visX * ratioX;
+      const boxY = visY * ratioY;
+      // 限制在 minimap totalW/H 范围内 (zoom 小于 fit 时可视区 > 整树, clamp)
+      const boxW = Math.max(20, Math.min(layout.totalW, visW * ratioX));
+      const boxH = Math.max(20, Math.min(layout.totalH, visH * ratioY));
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', boxX);
+      rect.setAttribute('y', boxY);
+      rect.setAttribute('width', boxW);
+      rect.setAttribute('height', boxH);
+      rect.setAttribute('class', 'minimap-viewport-box');
+      // 蓝框放在最上层 (links + nodes 之后)
+      svg.appendChild(rect);
+    } catch (e) {
+      console.warn('[viewport box] render failed:', e);
+    }
+  }
+
+  // 订阅 viewport
+  subscribeViewport(renderViewportBox);
+
+  // ★ 2026-08-04: minimap 交互 (hover tooltip + click pan + drag fast-pan)
+  let minimapTooltip = null;
+
+  function ensureTooltip() {
+    if (minimapTooltip) return minimapTooltip;
+    minimapTooltip = document.createElement('div');
+    minimapTooltip.className = 'minimap-tooltip';
+    minimapTooltip.id = 'minimapTooltip';
+    document.getElementById('minimapPanel').appendChild(minimapTooltip);
+    return minimapTooltip;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  function bindMinimapInteractions() {
+    const svg = document.getElementById('minimapSvg');
+    if (!svg) return;
+    const tooltip = ensureTooltip();
+
+    // Hover: 高亮 + tooltip
+    svg.addEventListener('mousemove', (e) => {
+      const target = e.target;
+      if (target.classList && target.classList.contains('minimap-node')) {
+        const name = target.getAttribute('data-name') || '(无名)';
+        const distId = target.getAttribute('data-dist-id') || '';
+        const level = target.getAttribute('data-level') || '';
+        const biz = target.getAttribute('data-business-level') || '';
+        tooltip.innerHTML = `<b>${escapeHtml(name)}</b> · L${level} · ${biz}<br><span style="opacity:0.7">${escapeHtml(distId)}</span>`;
+        tooltip.classList.add('visible');
+        const panel = document.getElementById('minimapPanel');
+        const panelRect = panel.getBoundingClientRect();
+        tooltip.style.left = (e.clientX - panelRect.left + 12) + 'px';
+        tooltip.style.top = (e.clientY - panelRect.top + 12) + 'px';
+      } else {
+        tooltip.classList.remove('visible');
+      }
+    });
+    svg.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+
+    // Click 节点: 主视图 pan 居中 + select
+    svg.addEventListener('click', (e) => {
+      const target = e.target;
+      if (target.classList && target.classList.contains('minimap-node')) {
+        const distId = target.getAttribute('data-dist-id');
+        panMainViewToNode(distId);
+      }
+    });
+
+    // Drag 背景: 主视图快速 pan (Figma style)
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+    let panStartX = 0, panStartY = 0;
+    svg.addEventListener('mousedown', (e) => {
+      if (e.target.classList && e.target.classList.contains('minimap-node')) return;
+      if (e.button !== 0) return;  // 只左键
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      panStartX = state.panX;
+      panStartY = state.panY;
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const layout = window.__minimapLayout;
+      if (!layout) return;
+      // 缩略图 → 主视图 缩放比
+      const ratioX = layout.totalW / viewportState.naturalW;
+      const ratioY = layout.totalH / viewportState.naturalH;
+      const dx = (e.clientX - dragStartX) / ratioX;
+      const dy = (e.clientY - dragStartY) / ratioY;
+      state.panX = panStartX - dx;
+      state.panY = panStartY - dy;
+      applyTransform();
+    });
+    document.addEventListener('mouseup', () => { isDragging = false; });
+
+    // Resize observer: panel resize 时重渲染缩略图
+    try {
+      const ro = new ResizeObserver(() => {
+        requestAnimationFrame(renderMinimap);
+      });
+      const containerEl = document.getElementById('minimapSvgContainer');
+      if (containerEl) ro.observe(containerEl);
+    } catch (e) {
+      console.warn('[minimap] ResizeObserver unavailable:', e);
+    }
+  }
+
+  // 主视图 pan 到指定节点
+  function panMainViewToNode(distId) {
+    if (!distId) return;
+    const mainNode = document.querySelector(`.tree-node-body[data-dist-id="${distId}"]`);
+    if (!mainNode) {
+      console.warn('[panToNode] not found in main view:', distId);
+      return;
+    }
+    // 2. 算节点在主视图的绝对位置
+    const nodeRect = mainNode.getBoundingClientRect();
+    const viewportEl = document.getElementById('viewport');
+    const canvasRect = viewportEl.getBoundingClientRect();
+    const nodeCenterX = nodeRect.left + nodeRect.width / 2 - canvasRect.left;
+    const nodeCenterY = nodeRect.top + nodeRect.height / 2 - canvasRect.top;
+    // 3. 算 pan: 让节点居中
+    // 节点视觉位置 = node.naturalX * zoom + pan
+    const zoom = state.zoom;
+    const naturalX = (nodeCenterX - state.panX) / zoom;
+    const naturalY = (nodeCenterY - state.panY) / zoom;
+    state.panX = canvasRect.width / 2 - naturalX * zoom;
+    state.panY = canvasRect.height / 2 - naturalY * zoom;
+    applyTransform();
+    // 4. 选中节点 (高亮)
+    document.querySelectorAll('.tree-node-body.selected').forEach(el => el.classList.remove('selected'));
+    mainNode.classList.add('selected');
+    mainNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // 渲染完成后绑定
+  bindMinimapInteractions();
+</script>
+
+</body>
+</html>

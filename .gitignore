@@ -1,0 +1,92 @@
+# =============================================================================
+# RewardAgentAnalysis .gitignore
+# =============================================================================
+
+# ---------- 密钥 / 配置 ----------
+# 绝对不能提交:包含真实 API Key
+.env
+.env.local
+.env.*.local
+
+# 允许保留 .env.example / .env.MiniMax 作为模板(无真实 key)
+!.env.example
+!.env.MiniMax
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.tox/
+
+# ---------- 虚拟环境 ----------
+venv/
+.venv/
+env/
+ENV/
+
+# ---------- 数据 / 运行时产物 ----------
+# SQLite 数据库 + 上传的文档 + 缓存
+data/
+!data/.gitkeep
+
+# 本地业务数据（含真实姓名/编号/上下级/PV，绝不入仓）
+# skill_b 从这个目录加载 5 叉树示例，但文件本身只在本地使用
+json/
+!json/.gitkeep
+
+# ---------- 临时日志 ----------
+uvicorn.out
+uvicorn.err
+uvicorn_test.out
+logs_uvicorn.out
+logs_uvicorn.err
+*.log
+nohup.out
+
+# ---------- 一次性 debug 产物 ----------
+# 任何以 _ 开头的临时文件 / 目录: 调试脚本 / 测试 HTML / 抓包日志 / playwright args 等
+# 真正的代码文件没有以 _ 开头的(都用驼峰或下划线)
+_*
+# outputs/ 下的临时生成物:tree 预览、debug css 等(demo 快照 / 取样 HTML / debug 渲染,程序可重生成)
+#   ignore 目录下所有文件但保留 .gitkeep 占位
+outputs/*
+!outputs/.gitkeep
+outputs/_*.html
+outputs/_*.css
+outputs/_*.json
+outputs/_*.png
+
+# ---------- 编辑器 / IDE ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+# Added by code-review-graph
+.code-review-graph/
+
+# ---------- Git worktrees ----------
+# 物理 worktree 目录(开发 feature 时用),不入仓
+.worktrees/
+
+# ---------- Superpowers brainstorm 临时产物 ----------
+# brainstorm session 的截图/UI/进程状态,不入仓
+.superpowers/
+
+# ---------- Office 锁文件 ----------
+# 任何 Office 应用打开文件时生成的临时锁文件(~$.xlsx / ~$.docx / ~$.pptx 等)
+# 这些文件不该入仓,加了之后防止误 add
+~$*

@@ -731,7 +731,8 @@
     panX: 32,
     panY: 32,
     stats: { total: 0, maxDepth: 0, byLevel: {} },
-    maxAutoExpand: 2,  // 默认展开到 L2
+    maxAutoExpand: 13,  // ★ 2026-08-06: 默认全展开 (L0-L12 13 层, 让用户看完整 264 节点)
+                       //   旧值 2 (PR #22 残留) 让 L3+ 折叠, 用户"无法向下移动"
   };
 
   // ★ 2026-08-04: viewport state (minimap 蓝框订阅这个)

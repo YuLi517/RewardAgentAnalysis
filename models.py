@@ -208,6 +208,23 @@ class Member(Base):
     role: Mapped[str] = mapped_column(
         String(64), nullable=False, default="消费股东", index=True,
     )
+    # ★ 2026-08-06 PR #75: 业务档位 (business_level) — 4 档位独立列, 跟 role 字段独立
+    #   - 用户拍板 (2026-08-06): 4 档位用独立列 business_level 存, 不替换 role
+    #   - 4 档位: 激活 / 商务 / 精英 / 至尊 (跟 PR #71 teamBonus 4 档精确匹配对应)
+    #     - 激活: 200 PV / 15% 培育金 (PR #71 tier rate)
+    #     - 商务: 500 PV / 20% 培育金
+    #     - 精英: 1000 PV / 25% 培育金
+    #     - 至尊: 1500 PV / 30% 培育金
+    #   - 业务定位: 业务上 4 档位 跟 PV / max_lines / 培育金 比率对应 (跟 PR #71 一致)
+    #     - 业务字段 (PV/max_lines) 跟 business_level 字段独立 (用户自己填, 业务上允许不一致)
+    #     - 默认 default = '激活' (最普通档位, 跟原 role 字段 '消费股东' 类似)
+    #   - 跟 role 字段关系: 独立 (role 跟 business_level 是 2 个不同维度)
+    #     - role 字段 7 role 保留 (badge 身份)
+    #     - business_level 字段 4 档位 (业务档位)
+    #   - migration: tools/migrate_pr75_business_level.py (幂等, ALTER TABLE + backfill '激活')
+    business_level: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="激活", index=True,
+    )
     # ★ 期间
     created_period_id: Mapped[Optional[str]] = mapped_column(String(16), index=True)
     last_period_id: Mapped[Optional[str]] = mapped_column(String(16))
@@ -233,6 +250,8 @@ class Member(Base):
             "current_pv_balance": self.current_pv_balance,
             "total_commission": self.total_commission,
             "savings_balance": self.savings_balance,  # ★ 2026-08-06 PR #73
+            "role": self.role,  # ★ 2026-07-16 PR #41/42 (7 role 字段)
+            "business_level": self.business_level,  # ★ 2026-08-06 PR #75 (4 档位独立列)
             "created_period_id": self.created_period_id,
             "last_period_id": self.last_period_id,
             "created_at": self.created_at,

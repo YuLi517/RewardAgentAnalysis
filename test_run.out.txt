@@ -1,0 +1,25 @@
+STDOUT: 
+STDERR: FAIL: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:38081/original-tree
+Call log:
+[2m  - navigating to "http://127.0.0.1:38081/original-tree", waiting until "networkidle"[22m
+
+
+ERROR: members 表非空 (4 行), 拒绝执行 (幂等保护)
+       确认要重跑时加 --force (会先 DELETE pv_ledger + members)
+ERROR: DB 不存在: C:\Users\rainc\AppData\Local\Temp\tmpc2kqmp6a\nonexistent.db
+[migrate_add_role] members.role 列已存在, 跑 enum key → label 映射 (PR #42)
+  (无 enum key 需迁移, DB 已是中文 label)
+[migrate_add_role] NULL/空 role 兜底更新: 0 行
+[migrate_add_role] members.role 列已存在, 跑 enum key → label 映射 (PR #42)
+  (无 enum key 需迁移, DB 已是中文 label)
+[migrate_add_role] NULL/空 role 兜底更新: 0 行
+✓ 已插入根节点: id=1, dist_id='N5637590.1', name='王常军'
+✓ 已插入根节点: id=1, dist_id='N5637590.1', name='王常军'
+✓ 已插入根节点: id=1, dist_id='N5637590.1', name='王常军'
+✓ Root 已在 members (id=1, name='王常军')
+  - parent_dist_id    = None
+  - slot_line_id      = 0
+  - current_pv_balance= 0
+  - created_period_id = '2026-W28'
+✓ 已插入根节点: id=1, dist_id='N5637590.1', name='王常军'
+✓ 已插入根节点: id=1, dist_id='N5637590.1', name='王常军'

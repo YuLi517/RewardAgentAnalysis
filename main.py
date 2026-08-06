@@ -153,6 +153,57 @@ DEFAULT_ROLE = "消费股东"
 VALID_ROLES = set(MEMBER_ROLES.keys())
 
 
+# ★ 2026-08-06 PR #75: 业务档位 (business_level) — 4 档位独立列
+#   用户拍板 (2026-08-06 截图): 成员加入时 4 档位选择
+#     - 激活: 200 PV / 15% 培育金 / 2 团队 (跟 PR #71 teamBonus 4 档 tier 1 对应)
+#     - 商务: 500 PV / 20% 培育金 / 3 团队 (跟 PR #71 tier 2 对应)
+#     - 精英: 1000 PV / 25% 培育金 / 4 团队 (跟 PR #71 tier 3 对应)
+#     - 至尊: 1500 PV / 30% 培育金 / 5 团队 (跟 PR #71 tier 4 对应)
+#   业务定位:
+#     - 跟 role 字段独立 (role 7 个 + business_level 4 档, 2 套并存)
+#     - 业务字段 (PV / max_lines) 跟 business_level 字段独立 (用户自己填)
+#     - 黄金身份 默认 ✓ (跟 role 跟 business_level 都无关, PR #74 拍板)
+#   颜色 (跟截图一致):
+#     - 激活: 紫色 (浅紫 #DDD6FE / 深紫 #4C1D95)
+#     - 商务: 蓝色 (浅蓝 #BFDBFE / 深蓝 #1E3A8A)
+#     - 精英: 橙色 (浅橙 #FED7AA / 深橙 #9A3412)
+#     - 至尊: 深绿 (浅绿 #BBF7D0 / 深绿 #14532D) — 跟原 预备合伙人 颜色一致 (复用)
+MEMBER_BUSINESS_LEVELS: Dict[str, Dict[str, str]] = {
+    "激活": {
+        "bg": "#DDD6FE",  # 浅紫
+        "fg": "#4C1D95",  # 深紫
+        "tier_pv": 200,    # 对应 PR #71 teamBonus 15% 档
+    },
+    "商务": {
+        "bg": "#BFDBFE",  # 浅蓝
+        "fg": "#1E3A8A",  # 深蓝
+        "tier_pv": 500,    # 对应 PR #71 teamBonus 20% 档
+    },
+    "精英": {
+        "bg": "#FED7AA",  # 浅橙
+        "fg": "#9A3412",  # 深橙
+        "tier_pv": 1000,   # 对应 PR #71 teamBonus 25% 档
+    },
+    "至尊": {
+        "bg": "#BBF7D0",  # 浅绿
+        "fg": "#14532D",  # 深绿
+        "tier_pv": 1500,   # 对应 PR #71 teamBonus 30% 档
+    },
+}
+DEFAULT_BUSINESS_LEVEL = "激活"
+VALID_BUSINESS_LEVELS = set(MEMBER_BUSINESS_LEVELS.keys())
+
+
+def _normalize_business_level(value: Optional[str]) -> str:
+    """★ 2026-08-06 PR #75: 规范化 business_level 值: 空/None/未知 → '激活' (默认)
+
+    跟 _normalize_role 平行函数, 4 档位独立列
+    """
+    if not value or value not in VALID_BUSINESS_LEVELS:
+        return DEFAULT_BUSINESS_LEVEL
+    return value
+
+
 def _normalize_role(value: Optional[str]) -> str:
     """规范化 role 值: 空/None/未知 → '消费股东' (默认)
 
@@ -1882,6 +1933,7 @@ def api_skill_5_3_commit_preview(
                 "parent_line_id": h.parent_line_id,
                 "period_id": req.period_id,
                 "role": _normalize_role(getattr(h, "role", None)),
+                "business_level": _normalize_business_level(getattr(h, "business_level", None)),  # ★ PR #75
             })
 
         # Pass 2: 解析所有 parent + 校验 (parent 可在 batch 内 set 中, 也可在 DB 中)
@@ -2226,6 +2278,21 @@ def _tree_render_node(
             f'title="{_html(_role_label)}">'
             f'{_html(_role_label)}</span>'
         )
+    # ★ 2026-08-06 PR #75: 业务档位 badge (4 档位独立列, 跟 role badge 并列)
+    #   - 业务定位: 4 档位 (激活/商务/精英/至尊) 跟 PR #71 teamBonus 4 档对应
+    #   - 跟 role badge 并列显示 (2 套独立), 不替换
+    #   - avail 节点不显示
+    business_level_badge = ""
+    if available is False and dist_id:
+        _bl_label = _normalize_business_level(node.get("business_level"))
+        _bl_info = MEMBER_BUSINESS_LEVELS[_bl_label]
+        business_level_badge = (
+            f'<span class="tv-badge tv-badge-business-level" '
+            f'business-level-label="{_html(_bl_label)}" '
+            f'style="background:{_bl_info["bg"]}; color:{_bl_info["fg"]};" '
+            f'title="业务档位: {_html(_bl_label)} (tier_pv={_bl_info["tier_pv"]})">'
+            f'{_html(_bl_label)}</span>'
+        )
 
     # ★ 2026-07-12 v3: 「点位编号」徽章 — 用户规则:父下的 1-based 位置,纯数字 1..5
     #   业务术语化的「奇左偶右」配色 (2026-07-10 新色卡 #5AA4AE 主):
@@ -2450,7 +2517,7 @@ def _tree_render_node(
             f'<span class="tv-caret"></span>'
             f'<div class="tv-card-line1">'
             f'<span class="{name_class}">{_html(name)}</span>'
-            f'{role_badge}'  # ★ PR #44: role 移到 line 1 (跟 name 同行)
+            f'{role_badge}{business_level_badge}'  # ★ PR #44 + PR #75: role + business_level 同行
             f'{avail_badge}{orphan_badge}{rank_badge}{line_badge_html}{x_coord_badge}'
             f'</div>'
             f'<div class="tv-card-line2">'
@@ -2478,7 +2545,7 @@ def _tree_render_node(
             f'<div class="tv-card-line1">'
             f'<span class="tv-crown">★</span>'
             f'<span class="{name_class}">{_html(name)}</span>'
-            f'{role_badge}'  # ★ PR #44: role 移到 line 1
+            f'{role_badge}{business_level_badge}'  # ★ PR #44 + PR #75
             f'{rank_badge}{orphan_badge}'
             f'</div>'
             f'<div class="tv-card-line2">'
@@ -2505,7 +2572,7 @@ def _tree_render_node(
             f'<div class="tv-card">'
             f'<div class="tv-card-line1">'
             f'<span class="{name_class}">{_html(name)}</span>'
-            f'{role_badge}'  # ★ PR #44: role 移到 line 1
+            f'{role_badge}{business_level_badge}'  # ★ PR #44 + PR #75
             f'{avail_badge}{orphan_badge}{rank_badge}{line_badge_html}{x_coord_badge}'
             f'</div>'
             f'<div class="tv-card-line2">'
@@ -3387,6 +3454,10 @@ def _build_tree_from_db(db) -> Dict[str, Any]:
             "depth": depth,
             # ★ 2026-07-16 PR #41: 角色 (供 _tree_render_node 渲染徽章)
             "role": _normalize_role(getattr(member, "role", None)),
+            # ★ 2026-08-06 PR #75: 业务档位 (4 档位独立列, 跟 role 字段独立)
+            #   - 业务上 4 档位 (激活/商务/精英/至尊) 跟 PR #71 teamBonus 4 档对应
+            #   - 跟 role 字段独立 (role 7 个, business_level 4 个, 2 套并存)
+            "business_level": _normalize_business_level(getattr(member, "business_level", None)),
             # ★ 2026-07-24 PR #67: subtreePv = own + 子孙 PV 递归累加 (跟算法层 c_pv_total 一致)
             #   - 父节点 ownBasic 算 5 子区 P/L 配对时用这个递归子区 PV
             #   - 跟 PR #66 算法层 _settle_node._sum_sub 一致
@@ -4259,6 +4330,8 @@ def api_members_list(limit: int = 200, db: Session = Depends(get_db)):
                 "direct_count": direct_count_map.get(m.member_dist_id, 0),
                 "total_commission": m.total_commission or 0.0,
                 "savings_balance": m.savings_balance or 0.0,  # ★ 2026-08-06 PR #73
+                "role": _normalize_role(getattr(m, "role", None)),
+                "business_level": _normalize_business_level(getattr(m, "business_level", None)),  # ★ PR #75
                 "created_period_id": m.created_period_id or "",
                 "last_period_id": m.last_period_id or "",
                 # ★ 2026-07-16 PR #41: 角色 (消费股东/预备合伙人/合伙人员工/初级管理/中级管理/高级管理/Inactive)
@@ -4765,14 +4838,14 @@ def api_orders_items_bulk_update(
 #   - body: {member_dist_id, role}
 #   - 比 PUT /api/admin/tables/members/rows/{id} 更直白, 前端 /role 命令不用走 admin
 # ============================================================
-class MemberRoleUpdateRequest(BaseModel):
+class MemberRoleRequest(BaseModel):
     member_dist_id: str = Field(..., description="目标成员 distId")
     role: str = Field(..., description=f"新角色, 可选: {sorted(VALID_ROLES)}")
 
 
 @app.post("/api/members/role")
 def api_member_role_update(
-    req: MemberRoleUpdateRequest,
+    req: MemberRoleRequest,
     db: DbSession = Depends(get_db),
 ):
     """改一个 member 的 role 字段 (供 /role 命令 + DB admin 共用)"""
@@ -4792,6 +4865,57 @@ def api_member_role_update(
         "new_role": new_role,
         # ★ 2026-07-16 PR #42: role_label 跟 new_role 一样 (DB 存全名), 保留字段兼容旧前端
         "role_label": new_role,
+    }
+
+
+# ★ 2026-08-06 PR #75: 改 member.business_level 专用 endpoint (跟 role 独立)
+#   - body: {member_dist_id, business_level}
+#   - 跟 /api/members/role 平行, 4 档位独立列
+#   - 业务定位: 业务档位 (激活/商务/精英/至尊) 跟 role 字段独立
+# ============================================================
+class MemberBusinessLevelRequest(BaseModel):
+    member_dist_id: str = Field(..., description="目标成员 distId")
+    business_level: str = Field(..., description=f"新业务档位, 可选: {sorted(VALID_BUSINESS_LEVELS)}")
+
+
+@app.post("/api/members/business_level")
+def api_member_business_level_update(
+    req: MemberBusinessLevelRequest,
+    db: DbSession = Depends(get_db),
+):
+    """★ 2026-08-06 PR #75: 改一个 member 的 business_level 字段 (4 档位独立列)"""
+    new_level = _normalize_business_level(req.business_level)
+    member = db.query(Member).filter_by(member_dist_id=req.member_dist_id).first()
+    if member is None:
+        raise HTTPException(404, f"找不到 distId={req.member_dist_id} 的成员")
+    old_level = _normalize_business_level(getattr(member, "business_level", None))
+    member.business_level = new_level
+    db.commit()
+    log.info(f"💎 member business_level 变更: {req.member_dist_id} {old_level} → {new_level}")
+    return {
+        "ok": True,
+        "member_dist_id": req.member_dist_id,
+        "member_name": member.member_name or "",
+        "old_business_level": old_level,
+        "new_business_level": new_level,
+    }
+
+
+@app.get("/api/members/business_levels")
+def api_member_business_levels_list():
+    """★ 2026-08-06 PR #75: 列所有可用业务档位 (供下拉 + DB admin 用)"""
+    return {
+        "business_levels": [
+            {
+                "key": k,
+                "label": k,
+                "bg": v["bg"],
+                "fg": v["fg"],
+                "tier_pv": v["tier_pv"],
+            }
+            for k, v in MEMBER_BUSINESS_LEVELS.items()
+        ],
+        "default": DEFAULT_BUSINESS_LEVEL,
     }
 
 

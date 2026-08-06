@@ -837,6 +837,75 @@ PAIRING_BONUS_5TH_USD_THRESHOLD = 1000.0  # 5 代门槛
   - 节点自身 = $650 (65%)
 - 业务含义: 4-5 代门槛是 ancestor 自己的 own commission, 业务上 ancestor 自己也要 commission 才满足 (防止 "白拿 share")
 
+
+### 2.21 业务档位 (Business Level, PR #75 拍板, 2026-08-06)
+
+**业务 (用户 2026-08-06 拍板截图 + 拍板原话)**:
+> "成员加入的时候, 有这 4 个档位选择. MEMBER = 激活, BUSINESS = 商务, ELITE = 精英, ULTIMATE = 至尊. 用语上对齐一下."
+> "这 4 个档位, 需要在 member 表里面有独立的列 businessLevel 来存储这个值."
+
+**业务规则 (4 档位)**:
+| 档位 | PV 分数目标 | 团队数量 | 奖金翻倍 | 超级再加入中心 | 培育金最低% | 黄金身份 |
+|---|---|---|---|---|---|---|
+| 激活 | 200 | 2 | ✓ | ✓ | 15% | ✓ (默认) |
+| 商务 | 500 | 3 | ✓ | ✓ | 20% | ✓ (默认) |
+| 精英 | 1000 | 4 | ✓ | ✓ | 25% | ✓ (默认) |
+| 至尊 | 1500 | 5 | ✓ | ✓ | 30% | ✓ (默认) |
+
+**业务定位**:
+- 4 档位跟 **PR #71 teamBonus 4 档精确匹配** 一一对应 (PV 200/500/1000/1500 → 15%/20%/25%/30%)
+- 跟 `role` 字段 (7 role) **独立**: 2 套并存, 不替换
+- 业务字段 (PV / max_lines) 跟 business_level 字段独立 (用户自己填)
+- 黄金身份默认 ✓ (跟 role 跟 business_level 都无关, PR #74 拍板)
+
+**核心实现**:
+```python
+# 4 档位 dict (跟截图颜色一致: 紫/蓝/橙/深绿)
+MEMBER_BUSINESS_LEVELS = {
+    "激活": {"bg": "#DDD6FE", "fg": "#4C1D95", "tier_pv": 200},
+    "商务": {"bg": "#BFDBFE", "fg": "#1E3A8A", "tier_pv": 500},
+    "精英": {"bg": "#FED7AA", "fg": "#9A3412", "tier_pv": 1000},
+    "至尊": {"bg": "#BBF7D0", "fg": "#14532D", "tier_pv": 1500},
+}
+DEFAULT_BUSINESS_LEVEL = "激活"
+```
+
+**DB 字段** (PR #75):
+```sql
+ALTER TABLE members ADD COLUMN business_level VARCHAR(32) NOT NULL DEFAULT '激活';
+CREATE INDEX ix_members_business_level ON members (business_level);
+```
+- migration: `tools/migrate_pr75_business_level.py` (幂等, ALTER + backfill '激活')
+
+**API endpoints**:
+- `POST /api/members/business_level` — body: `{member_dist_id, business_level}`, 4 档位任选
+- `GET /api/members/business_levels` — 返 4 档位 + 默认 (供下拉用)
+- `GET /api/members` — 返每个 member 的 `business_level` 字段
+- `_build_tree_from_db` — 注入 `business_level` 字段 (跟 `role` 并列)
+- 树视图渲染 — `business_level_badge` 跟 `role_badge` 同行 (line 1)
+
+**业务原则**:
+1. **跟 role 独立**: 2 套字段并存 (role 7 个, business_level 4 个), UI 显示 2 个 badge
+2. **跟 PV / max_lines 独立**: business_level 只是身份标签, 业务字段自己填
+3. **tier_pv 跟 PR #71 对应**: 4 档位 PV (200/500/1000/1500) 跟 teamBonus tier 完全一致
+4. **default = 激活**: 最普通档位, 跟原 role default '消费股东' 类似
+5. **黄金身份默认 ✓**: 跟 role 跟 business_level 都无关, PR #74 拍板
+
+**业务示例 (1 节点选档位)**:
+| 节点 | role | business_level | role 显示 | business_level 显示 | 培育金 (tier rate) |
+|---|---|---|---|---|---|
+| 节点 A | 消费股东 | 激活 | 蓝色 (BFDBFE) | 紫色 (DDD6FE) | 15% (PV=200) |
+| 节点 B | 合伙人员工 | 商务 | 紫色 (DDD6FE) | 蓝色 (BFDBFE) | 20% (PV=500) |
+| 节点 C | 高级管理合伙人 | 至尊 | 红色 (FECACA) | 绿色 (BBF7D0) | 30% (PV=1500) |
+
+**业务影响**:
+- 4 档位跟 PR #71 teamBonus 完全对应, 业务上 1 个维度 (tier)
+- 跟 role 字段独立, 2 套身份系统并存 (UI 显示 2 个 badge)
+- 业务上 PV 跟 max_lines 跟 business_level 独立, 用户自己填
+- 黄金身份 (PR #74) 默认 ✓, 跟 business_level 无关
+
+---
+
 ---
 
 ---

@@ -744,6 +744,101 @@ P 剩 = max(0, P - sub_pair) → 写到 P 子区根
 4. **cap 不影响 carry**: commission 算用 capped, carry 仍用原 PV, PV 不浪费
 5. **>2 叉公式删除**: 业务上 root 4 叉也用 sub_pair, 不用 per-line cap L 独立 (PR #72 v1 公式废弃)
 
+
+### 2.20 对等奖金门槛规则 (PR #74 拍板, 2026-08-06)
+
+**业务 (用户 2026-08-06 拍板截图 + 拍板原话)**:
+> "1. 默认成员都是黄金会员."
+> "2. 7th 需要优化 2 个佣金部门, 这个目前做不到, 可以忽略. 所以 7 层的对等奖金暂时拿不到."
+> "6代可以拿到, 优化佣金部门目前可以做到. Root 节点就算一个佣金部门."
+
+**核心公式** (PR #74, 2026-08-06 拍板):
+```
+PAIRING_BONUS_RATIOS = {
+    1: 0.15,  # 1 代: 黄金身份 (默认), always 拿
+    2: 0.10,  # 2 代: 黄金身份 (默认), always 拿
+    3: 0.05,  # 3 代: 黄金身份 (默认), always 拿
+    4: 0.05,  # 4 代: 黄金 + ancestor 本期 ownBasic ≥ $500 USD
+    5: 0.05,  # 5 代: 黄金 + ancestor 本期 ownBasic ≥ $1000 USD
+    6: 0.05,  # 6 代: 黄金 + 优化 1 个佣金部门 (默认 1 个, always 满足)
+    # 7 代: 黄金 + 优化 2 个佣金部门 (业务做不到, 永远 0%)
+}
+PAIRING_BONUS_MAX_DEPTH = 6  # 实际生效 1-6 代
+PAIRING_BONUS_4TH_USD_THRESHOLD = 500.0   # 4 代门槛
+PAIRING_BONUS_5TH_USD_THRESHOLD = 1000.0  # 5 代门槛
+```
+
+**业务示例** (节点 leaf.commission=$1000):
+| 代数 | 业务条件 | 比率 | ancestor share |
+|---|---|---|---|
+| 1 代 (a) | 黄金身份 (默认) | 15% | $1000 × 0.15 = $150 |
+| 2 代 (b) | 黄金身份 (默认) | 10% | $1000 × 0.10 = $100 |
+| 3 代 (c) | 黄金身份 (默认) | 5% | $1000 × 0.05 = $50 |
+| 4 代 (d) | 黄金 + d.ownBasic ≥ $500 (假设 d 有 own $600) | 5% | $1000 × 0.05 = $50 |
+| 5 代 (e) | 黄金 + e.ownBasic ≥ $1000 (假设 e 有 own $1200) | 5% | $1000 × 0.05 = $50 |
+| 6 代 (root) | 黄金 + 优化 1 个佣金部门 (默认 always) | 5% | $1000 × 0.05 = $50 |
+| 7 代 | 黄金 + 优化 2 个佣金部门 (业务做不到) | 0% | 拿不到 |
+| **总 ancestor share** | | **40%** | **$400** |
+| 节点自身 | 1 - 40% = 60% | | **$600** |
+
+**业务定位**:
+- 1-3 代: 黄金身份 (默认所有 member 都满足), always 拿
+- 4-5 代: ancestor 自己的本期 ownBasic (commission 数字直接当美元) 需 ≥ $500 / $1000
+- 6 代: 黄金 + 优化 1 个佣金部门, 业务上 "Root 节点就算一个佣金部门" → 默认 always 满足
+- 7 代: 业务上做不到 2 个佣金部门, ratio=0 (dict 缺失, get(7, 0.0)=0)
+
+**业务含义** (跟 PR #1 旧规则的差别):
+- 旧 (PR #1): 7 代无门槛, 全部祖先 [0.15, 0.10, 0.05×5], 总 55% ancestor share
+- 新 (PR #74): 1-6 代分门槛, 7 代拿不到, 总 40% ancestor share (commission $1000 时)
+- 业务影响: 节点自身从 45% → 60% (多 15%, 因为 7 代砍掉 5% + 4-5 代门槛不总是满足)
+- ancestor 总拿从 7 代变 6 代, 业务上 ancestor 利润减少, 节点自身增加
+
+**实现位置**:
+- `skills/period.py`:
+  - `PAIRING_BONUS_RATIOS` 从 list 改 dict (key=1..6)
+  - `PAIRING_BONUS_MAX_DEPTH = 6` (旧是 7, 现在 1-6 代生效)
+  - 加 `PAIRING_BONUS_4TH_USD_THRESHOLD = 500.0` / `PAIRING_BONUS_5TH_USD_THRESHOLD = 1000.0`
+- `skills/pair_commission.py._apply_pairing_bonus`:
+  - 收集 ancestor chain 时, 同时收集 `node_to_ownbasic` (ancestor 自己的本期 ownBasic 数字)
+  - 循环 ancestors 时, 按 depth 1-6 走门槛:
+    - 1-3 代: always 拿 (黄金身份默认)
+    - 4 代: anc_ownbasic ≥ $500
+    - 5 代: anc_ownbasic ≥ $1000
+    - 6 代: always 拿 (默认 1 个佣金部门, 业务 always 满足)
+    - 7 代: dict 缺失, ratio=0, 永远拿不到
+- `main.py._accumulate_pair_bonus`:
+  - 同步按 depth 走门槛 (preview 跟 settle 一致)
+  - anc_ownbasic 来自 `anc.get("ownBasic", 0.0)`, 跟算法层 ancestor ownBasic 数字一致
+
+**业务原则**:
+1. **黄金身份默认**: 所有 member 默认黄金身份, 1-3 代 always 拿 (业务定位: "默认成员都是黄金会员")
+2. **4-5 代 USD 门槛**: ancestor 自己的本期 ownBasic 数字 (commission 数字直接当美元) 需 ≥ 阈值
+3. **6 代 always 拿**: 业务上 "Root 节点就算一个佣金部门" → 默认 1 个部门, always 满足
+4. **7 代永远拿不到**: 业务上做不到 2 个佣金部门, ratio=0 (dict 缺失)
+5. **preview 跟 settle 规则完全一致**: 实时 preview 跟 _apply_pairing_bonus 走同一套门槛
+6. **节点自身从 45% → 60%**: 7 代砍掉 5%, 节点自身多 15% (ancestor 总拿从 7 代变 6 代)
+
+**改 commission preview 计算**:
+- 旧: commissionPreview = ownBasic + pairBonus (7 代) + teamBonus
+- 新: commissionPreview = ownBasic + pairBonus (1-6 代, 门槛) + teamBonus
+- 业务: 节点自身 commissionPreview 增加, ancestor commissionPreview 减少 (ancestor chain 上 ancestor 拿少了)
+
+**ancestor ownBasic 数字来源**:
+- 算法层 (_settle_node): 节点配对 commission = sub_pair × 15%, ownBasic = commission (PR #68 + #72 公式)
+- 渲染层 (_build_tree_from_db): ownBasic 字段在 tree dict 里, _accumulate_pair_bonus 读 `anc.get("ownBasic", 0.0)`
+- 一致: 渲染层 ownBasic 跟算法层 commission 数字一致 (PR #74 统一)
+
+**业务影响 (跟 PR #71 + #72 + #73 组合)**:
+- 节点 ownBasic = $1000, ancestor 6 层全满足 (默认):
+  - 1 代 $150 + 2 代 $100 + 3 代 $50 + 4 代 $50 + 5 代 $50 + 6 代 $50 = $400 (40% ancestor share)
+  - 节点自身 = $600 (60%)
+- 节点 ownBasic = $1000, 但 4-5 代 ancestor ownBasic = $0 (只是 chain 中间节点):
+  - 1 代 $150 + 2 代 $100 + 3 代 $50 + 4 代 $0 (门槛不满足) + 5 代 $0 (门槛不满足) + 6 代 $50 = $350
+  - 节点自身 = $650 (65%)
+- 业务含义: 4-5 代门槛是 ancestor 自己的 own commission, 业务上 ancestor 自己也要 commission 才满足 (防止 "白拿 share")
+
+---
+
 ---
 
 ---

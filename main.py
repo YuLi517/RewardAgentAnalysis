@@ -3423,19 +3423,34 @@ def _build_tree_from_db(db) -> Dict[str, Any]:
 
     tree = _build(root_member, 0, 0)
 
-    # ★ 2026-07-21 PR #58: 7 层对等累加
-    #   对每个节点的 ownBasic, 按 PAIRING_BONUS_RATIOS = [0.15, 0.10, 0.05×5] 分给 1/2/3/4/5/6/7 代祖先
-    #   跟 settle_period._apply_pairing_bonus 规则完全一致 (PR #1 业务规则)
-    #   简化实现: 前序遍历, ancestor_nodes = [父, 祖父, ..., 7代祖先], 累加到每个 ancestor.commissionPreview
+    # ★ 2026-07-21 PR #58: 1-6 代对等累加 (PR #74 拍板, 7 代拿不到)
+    #   对每个节点的 ownBasic, 按 PAIRING_BONUS_RATIOS (dict, key=1..6) 分给 1/2/3/4/5/6 代祖先
+    #   跟 settle_period._apply_pairing_bonus 规则完全一致 (PR #1 + PR #74 业务规则)
+    #   简化实现: 前序遍历, ancestor_nodes = [父, 祖父, ..., 6代祖先], 累加到每个 ancestor.commissionPreview
     # ★ PR #69: 同步累加 teamBonus 到 commissionPreview (1区 + 2区 新PV × 30%)
-    #   teamBonus 不分给祖先 (团队培育是节点自己的下线奖励, 跟 7 层对等是不同维度)
+    #   teamBonus 不分给祖先 (团队培育是节点自己的下线奖励, 跟 1-6 代对等是不同维度)
+    # ★ PR #74: 4-5 代门槛检查 (ancestor 本期 ownBasic USD ≥ $500 / $1000)
+    #   - 6 代 always 拿 (默认 1 个佣金部门, 业务上 always 满足)
+    #   - 7 代永远拿不到 (业务上做不到 2 个佣金部门, ratio=0)
     def _accumulate_pair_bonus(node: Dict[str, Any], ancestor_nodes: List[Dict[str, Any]]) -> None:
         own = float(node.get("ownBasic", 0.0) or 0.0)
         if own > 0:
             for i, anc in enumerate(ancestor_nodes[:PAIRING_BONUS_MAX_DEPTH]):
-                ratio = PAIRING_BONUS_RATIOS[i] if i < len(PAIRING_BONUS_RATIOS) else 0.0
+                # i 是 0-based (i=0 → 第 1 代), PAIRING_BONUS_RATIOS key 是 1-based
+                gen = i + 1
+                ratio = PAIRING_BONUS_RATIOS.get(gen, 0.0)  # 7 代拿不到
                 if ratio <= 0:
                     continue
+                # ★ PR #74: 4-5 代 ancestor 门槛检查 (ownBasic USD)
+                if gen == 4:
+                    anc_ownbasic = float(anc.get("ownBasic", 0.0) or 0.0)
+                    if anc_ownbasic < PAIRING_BONUS_4TH_USD_THRESHOLD:
+                        continue
+                elif gen == 5:
+                    anc_ownbasic = float(anc.get("ownBasic", 0.0) or 0.0)
+                    if anc_ownbasic < PAIRING_BONUS_5TH_USD_THRESHOLD:
+                        continue
+                # 6 代: always 拿 (默认 1 个部门, 业务 always 满足)
                 anc["commissionPreview"] = float(anc.get("commissionPreview", 0.0) or 0.0) + own * ratio
         # 团队培育奖金只加给节点自己, 不分给祖先
         team_bonus = float(node.get("teamBonus", 0.0) or 0.0)
@@ -3942,6 +3957,7 @@ from repository import (
 from skills.period import (
     get_current_period_id, get_period_range, list_periods_in_range,
     PAIRING_BONUS_RATIOS, PAIRING_BONUS_MAX_DEPTH, COMMISSION_RATE,
+    PAIRING_BONUS_4TH_USD_THRESHOLD, PAIRING_BONUS_5TH_USD_THRESHOLD,  # ★ PR #74
 )
 from skills.pair_commission import settle_period, get_or_create_period
 

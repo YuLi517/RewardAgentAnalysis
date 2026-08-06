@@ -46,6 +46,7 @@ from skills.period import (
     COMMISSION_RATE, PAIRING_BONUS_RATIOS, PAIRING_BONUS_MAX_DEPTH,
     BASIC_COMMISSION_LINE_PV_CAP,
     SAVINGS_BONUS_USD_THRESHOLD, SAVINGS_BONUS_USD_RATE, SAVINGS_BONUS_USD_CAP,
+    PAIRING_BONUS_4TH_USD_THRESHOLD, PAIRING_BONUS_5TH_USD_THRESHOLD,
     get_period_range,
 )
 
@@ -539,22 +540,41 @@ def _apply_pairing_bonus(
     root: SlotNode,
     result: SettleResult,
 ) -> None:
-    """沿 7 代祖先链分润每个节点的 commission
+    """沿 1-6 代祖先链分润每个节点的 commission (PR #74 拍板, 7 代拿不到)
+
+    业务 (PR #74, 2026-08-06 用户拍板截图):
+      - 1 代: 黄金身份 (默认) → 15% (always)
+      - 2 代: 黄金身份 (默认) → 10% (always)
+      - 3 代: 黄金身份 (默认) → 5% (always)
+      - 4 代: 黄金 + ancestor 本期 ownBasic ≥ $500 USD → 5%
+      - 5 代: 黄金 + ancestor 本期 ownBasic ≥ $1000 USD → 5%
+      - 6 代: 黄金 + 优化 1 个佣金部门 (默认 1 个, always) → 5%
+      - 7 代: 黄金 + 优化 2 个佣金部门 (业务做不到) → 0% (拿不到)
 
     对每个非 root 节点 n:
         自身 commission = basic_commission(n) (已算)
-        ancestor share = basic_commission(n) × [0.15, 0.10, 0.05, 0.05, 0.05, 0.05, 0.05]
-                       分别给第 1/2/3/4/5/6/7 代 ancestor
+        ancestor share = basic_commission(n) × ratio[depth] (按 depth 走门槛)
+                       分给第 1/2/3/4/5/6 代 ancestor
     """
     # ★ 2026-07-17 PR #53: 虚拟根 sentinel 改 "__VIRTUAL_ROOT__" (旧是 "ROOT" 跟真实 distId 冲突)
     #   - 真实 root (王常军) 是顶级, ancestors=[], 它自己的 commission 不分给任何人 (自己拿)
     #   - 虚拟根 fallback (DB 异常) 用 "__VIRTUAL_ROOT__" sentinel, 不进链也不写 commission
     #   实际链: L3.ancestors = [L2, L1] (depth=0=L2 第1代, depth=1=L1 第2代)
     node_to_ancestors: Dict[str, List[str]] = {}
+    # ★ 2026-08-06 PR #74: 同时收集 ancestor 的本期 ownBasic (commission 数字直接当美元)
+    #   - 4-5 代 ancestor 拿 5% 需检查 ownBasic 美元门槛
+    #   - ownBasic 已经在 _settle_node 算过, 写在 result.commission_by_dist (PR #72 sub_pair 公式)
+    #   - ancestor 拿的 ownBasic 是 ancestor 自己的 ownBasic (不是子节点的)
+    #   - 业务: 子节点 commission 算 ancestor 拿 share, 但 4-5 代门槛看 ancestor ownBasic
+    #   - 简化: ancestor.ownBasic = result.commission_by_dist.get(ancestor_dist, 0.0)
+    #     (ancestor 自己的 ownBasic 数字, 跟 own PV 配对消耗后, commission 数字)
+    node_to_ownbasic: Dict[str, float] = {}
 
     def _collect(node: SlotNode, ancestors: List[str]) -> None:
         if node.dist_id and node.dist_id != "__VIRTUAL_ROOT__":
             node_to_ancestors[node.dist_id] = list(ancestors)
+            # ★ PR #74: ancestor 自己的 ownBasic 数字 (跟 _settle_node 算的 commission 一致)
+            node_to_ownbasic[node.dist_id] = float(result.commission_by_dist.get(node.dist_id, 0.0) or 0.0)
         for child in node.children:
             if child is not None:
                 # 虚拟根不进链; 真实节点加到 ancestors
@@ -565,13 +585,28 @@ def _apply_pairing_bonus(
 
     _collect(root, [])
 
-    # 对每个节点 n, 把它自己的 commission 按比例分给 ancestors
+    # 对每个节点 n, 把它自己的 commission 按比例分给 ancestors (1-6 代)
     for node_dist, commission in result.commission_by_dist.items():
         if commission <= 0:
             continue
         ancestors = node_to_ancestors.get(node_dist, [])
         for depth, ancestor_dist in enumerate(ancestors[:PAIRING_BONUS_MAX_DEPTH]):
-            ratio = PAIRING_BONUS_RATIOS[depth]
+            # depth 是 0-based (depth=0 → 第 1 代), PAIRING_BONUS_RATIOS key 是 1-based
+            gen = depth + 1
+            ratio = PAIRING_BONUS_RATIOS.get(gen, 0.0)  # 7 代拿不到, 默认 0
+            if ratio <= 0:
+                continue
+            # ★ PR #74: 4-5 代 ancestor 门槛检查
+            if gen == 4:
+                anc_ownbasic = node_to_ownbasic.get(ancestor_dist, 0.0)
+                if anc_ownbasic < PAIRING_BONUS_4TH_USD_THRESHOLD:
+                    continue  # 4 代门槛不满足, 跳过
+            elif gen == 5:
+                anc_ownbasic = node_to_ownbasic.get(ancestor_dist, 0.0)
+                if anc_ownbasic < PAIRING_BONUS_5TH_USD_THRESHOLD:
+                    continue  # 5 代门槛不满足, 跳过
+            # 6 代: 黄金 + 优化 1 个佣金部门 (默认 always 满足, 无门槛检查)
+            # 7 代: dict 缺失 = 0%, 已跳过
             share = commission * ratio
             result.ancestor_share_by_dist[ancestor_dist] = (
                 result.ancestor_share_by_dist.get(ancestor_dist, 0.0) + share

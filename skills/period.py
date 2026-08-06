@@ -34,8 +34,38 @@ from typing import Tuple
 
 # 跟 officev2 一致, 写死, 不参数化
 COMMISSION_RATE: float = 0.15
-PAIRING_BONUS_RATIOS: list = [0.15, 0.10, 0.05, 0.05, 0.05, 0.05, 0.05]  # 7 代分润
-PAIRING_BONUS_MAX_DEPTH: int = 7
+
+# ★ 2026-08-06 PR #74: 7 代对等奖金 — 黄金身份 + 门槛 (用户 2026-08-06 拍板截图)
+#   旧 (PR #1): 7 代无门槛, 全部成员可拿, ratios = [0.15, 0.10, 0.05×5] (总 55% ancestor share)
+#   新 (PR #74): 1-6 代分门槛, 7 代拿不到
+#     - 1 代: 黄金身份 (默认) → 15%
+#     - 2 代: 黄金身份 (默认) → 10%
+#     - 3 代: 黄金身份 (默认) → 5%
+#     - 4 代: 黄金 + 本期 ownBasic ≥ $500 USD → 5%
+#     - 5 代: 黄金 + 本期 ownBasic ≥ $1000 USD → 5%
+#     - 6 代: 黄金 + 优化 1 个佣金部门 (默认 1 个, always 满足) → 5%
+#     - 7 代: 黄金 + 优化 2 个佣金部门 (业务做不到, 默认 0 个) → 0% (拿不到)
+#   业务: "默认成员都是黄金会员" (所有 member 默认 1-3 代 always 拿)
+#        "Root 节点就算一个佣金部门" (6 代 always 满足, 跟 1-3 代一样)
+#        "7th 需要优化 2 个佣金部门, 这个目前做不到, 可以忽略" (7 代 always 0%)
+#   总 ancestor share (commission $1000): 1 代 $150 + 2 代 $100 + 3 代 $50 + 4 代 $50 (ownBasic $1000 ≥ $500) + 5 代 $50 (ownBasic $1000 ≥ $1000) + 6 代 $50 (default 1 个部门) = $450 (45%)
+#   旧: 55% ancestor share → 新: 45% ancestor share (7 代砍掉 5%, 6 代保留)
+#   业务含义: ancestor 总拿从 7 代变 6 代, 节点自身从 45% → 55%
+PAIRING_BONUS_RATIOS: dict = {
+    1: 0.15,  # 1 代: 黄金身份 (默认), always
+    2: 0.10,  # 2 代: 黄金身份 (默认), always
+    3: 0.05,  # 3 代: 黄金身份 (默认), always
+    4: 0.05,  # 4 代: 黄金 + ancestor 本期 ownBasic ≥ $500 USD
+    5: 0.05,  # 5 代: 黄金 + ancestor 本期 ownBasic ≥ $1000 USD
+    6: 0.05,  # 6 代: 黄金 + 优化 1 个佣金部门 (默认 1 个, always 满足)
+    # 7: 0.00  # 7 代: 黄金 + 优化 2 个佣金部门 (业务做不到, 永远 0%)
+}
+# 7 代拿不到, 不进 dict (key 缺失 = 0%)
+PAIRING_BONUS_MAX_DEPTH: int = 6  # 实际生效 1-6 代, 7 代拿不到 (PR #74)
+
+# ★ 2026-08-06 PR #74: 4-5 代 ancestor 门槛 (ownBasic USD 数字, 跟 savings 同源)
+PAIRING_BONUS_4TH_USD_THRESHOLD: float = 500.0   # 4 代拿 5% 需 ownBasic ≥ $500
+PAIRING_BONUS_5TH_USD_THRESHOLD: float = 1000.0  # 5 代拿 5% 需 ownBasic ≥ $1000
 
 # ★ PR #72 (2026-08-06): 基本佣金每条 commission line 每周 max 13334 PV
 #   业务: "每条佣金线每周最大值是13334PV, 超过按 13334 算, 约合 2000 美金"

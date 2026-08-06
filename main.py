@@ -2394,10 +2394,12 @@ def _tree_render_node(
     )
     _commission_html = ""
     if _show_commission_preview:
-        # ★ PR #69: tooltip 文案更新 — 模拟2字去掉, own basic → 基本佣金,
-        #   7层对等pair → 对等奖金, 删除"基于本期 periodPv 模拟..." 句, 加 团队培育奖金
-        #   业务: 用户 2026-07-27 反馈 — "增加 团队培育奖金, 1区新成员1500PV, 2区新成员1000PV
-        #   → 团队培育奖金 = 1500*30% + 1000*30% = 750"
+        # ★ PR #69 → PR #71: tooltip 文案更新 — 团队培育奖金按 4 档精确匹配
+        #   旧 (PR #69): 1区/2区新PV 全部按 30% 算 (用户 2026-07-27 反馈)
+        #   新 (PR #71, 2026-08-06): 按"每个新成员 own periodPv"严格精确匹配 4 档
+        #     - 200 PV → 15% / 500 PV → 20% / 1000 PV → 25% / 1500 PV → 30%
+        #     - 其它 PV (300/700/1200/2000/...) → 0% (严格精确, 不套档)
+        #   tooltip 三段文案: 基本佣金 + 对等奖金 + 团队培育奖金 = 总额
         _commission_html = (
             f'<span class="tv-commission-preview" '
             f'title="本期可拿 — 基本佣金: ¥{_own_basic_preview:.2f} '
@@ -3064,6 +3066,52 @@ def _compute_direct_count_map(db) -> Dict[str, int]:
 
 
 # ============================================================
+# ★ 2026-08-06 PR #71: 团队培育奖金 4 档精确匹配 (用户拍板)
+#   旧 (PR #69): 1区新PV + 2区新PV 全部按 30% 算 (单一比率)
+#   新 (PR #71): 按"每个新成员 own periodPv"严格精确匹配, 4 档:
+#     - 200 PV  → 15%
+#     - 500 PV  → 20%
+#     - 1000 PV → 25%
+#     - 1500 PV → 30%
+#     - 其它 (300/700/1200/2000/...)  → 0% (严格精确, 不套档不四舍五入)
+#   业务场景: 1区新成员 A (500 PV) + 2区新成员 B (1500 PV)
+#   → teamBonus = 500*20% + 1500*30% = 100 + 450 = 550
+# ============================================================
+TEAM_BONUS_TIER_RATES: dict = {
+    200: 0.15,
+    500: 0.20,
+    1000: 0.25,
+    1500: 0.30,
+}
+
+
+def _team_bonus_tier_rate(period_pv: int) -> float:
+    """PR #71: 4 档精确匹配 — period_pv 必须严格 = {200, 500, 1000, 1500} 才给奖, 其它 0%"""
+    return TEAM_BONUS_TIER_RATES.get(int(period_pv or 0), 0.0)
+
+
+def _team_bonus_walk_subtree(node: Optional[Dict[str, Any]]) -> float:
+    """PR #71: 递归走 1区/2区 subtree, 对每个成员的 own periodPv 应用 4 档精确匹配 rate, 累加
+
+    Args:
+        node: subtree 根节点 (slot 1 或 slot 2 子节点本身), dict 含 periodPv + children
+    Returns:
+        teamBonus 累加值 (¥)
+    业务:
+        1区 subtree 有 3 个新成员: A(500) + A.children[0](1500) + A.children[1](200)
+        → 累加 500*20% + 1500*30% + 200*15% = 100 + 450 + 30 = 580
+    """
+    if node is None or node.get("available"):
+        return 0.0
+    own_pv = int(node.get("periodPv", 0) or 0)
+    rate = _team_bonus_tier_rate(own_pv)
+    total = own_pv * rate
+    for c in node.get("children") or []:
+        total += _team_bonus_walk_subtree(c)
+    return total
+
+
+# ============================================================
 # ★ 2026-07-16 PR #39: tree view 以 DB 为权威 — 完全从 DB 构建 5 叉树 dict
 #   替代之前的 _sync_raw_names_with_db / _compute_orphan_set / _inject_direct_count
 #   返回结构跟 json fixture 兼容 (递归 dict, 含 distId/name/parentLineId/maxLines/children/available)
@@ -3169,32 +3217,36 @@ def _build_tree_from_db(db) -> Dict[str, Any]:
             if not cd.get("available")
         )
         subtree_pv = own_pv + children_subtree_pv
-        # ★ PR #69: 团队培育奖金 = 1区(左支) 新PV × 30% + 2区(右支) 新PV × 30%
-        #   - 业务 (用户 2026-07-27 反馈):
-        #     "看他的1区和2区是否是新增的成员, 假设1区（左支）新增成员with 1500PV,
-        #      2区（右支）新增成员with 1000PV, 团队培育奖金=1500*30% + 1000*30% = 750"
-        #   - 1区 (slot 1 子树) 新PV = 递归累加 slot 1 子树的 periodPv
-        #   - 2区 (slot 2 子树) 新PV = 递归累加 slot 2 子树的 periodPv
+        # ★ PR #69 → PR #71: 团队培育奖金 — 4 档精确匹配 (用户 2026-08-06 拍板)
+        #   - 旧 (PR #69): 1区新PV + 2区新PV 全部按 30% 算
+        #   - 新 (PR #71): 按"每个新成员 own periodPv"严格精确匹配 4 档:
+        #     - 200 PV  → 15%
+        #     - 500 PV  → 20%
+        #     - 1000 PV → 25%
+        #     - 1500 PV → 30%
+        #     - 其它 → 0% (严格精确, 不套档不四舍五入)
         #   - 只看 slot 1 / slot 2 (1区左支 + 2区右支), 不看 3/4/5 区
-        #   - "新增" 通过 periodPv (本期新增 PV) 实现 — 老成员 carry 不算
+        #   - 走 1区/2区 子树, 对每个成员 own periodPv 应用 tier rate, 累加
+        #   - 业务场景: 1区新成员 A (500) + 2区新成员 B (1500)
+        #     → teamBonus = 500*20% + 1500*30% = 100 + 450 = 550
         children_subtree_period_pv = sum(
             int(cd.get("subtreePeriodPv", 0) or 0)
             for cd in child_dicts
             if not cd.get("available")
         )
         subtree_period_pv = own_pv + children_subtree_period_pv
-        left_branch_pv = 0  # 1区 新PV
-        right_branch_pv = 0  # 2区 新PV
+        # PR #71: 找 1区 (slot 1) + 2区 (slot 2) 子树根, 递归算 tier-based 累加
+        left_branch_subtree: Optional[Dict[str, Any]] = None
+        right_branch_subtree: Optional[Dict[str, Any]] = None
         for cd in child_dicts:
             if cd.get("available"):
                 continue
             cd_slot = int(cd.get("parentLineId", 0) or 0)
-            cd_subtree_period_pv = int(cd.get("subtreePeriodPv", 0) or 0)
             if cd_slot == 1:
-                left_branch_pv = cd_subtree_period_pv
+                left_branch_subtree = cd
             elif cd_slot == 2:
-                right_branch_pv = cd_subtree_period_pv
-        team_bonus = (left_branch_pv + right_branch_pv) * 0.30
+                right_branch_subtree = cd
+        team_bonus = _team_bonus_walk_subtree(left_branch_subtree) + _team_bonus_walk_subtree(right_branch_subtree)
         # 子区配对: P = max(5 子区 subtreePv), L = sum(其他 4 子区)
         real_child_pvs = [
             int(cd.get("subtreePv", 0) or 0)
@@ -3251,11 +3303,13 @@ def _build_tree_from_db(db) -> Dict[str, Any]:
             #   - 跟 subtreePv 类似, 但只用 periodPv (本期的 PV)
             #   - 用在 teamBonus 算 1区/2区 新PV
             "subtreePeriodPv": subtree_period_pv,
-            # ★ PR #69: 1区 (slot 1 subtree) 新PV — 用于团队培育奖金
-            "leftBranchPv": left_branch_pv,
-            # ★ PR #69: 2区 (slot 2 subtree) 新PV
-            "rightBranchPv": right_branch_pv,
-            # ★ PR #69: 团队培育奖金 = (1区 + 2区) 新PV × 30%
+            # ★ PR #69 → PR #71: 1区/2区 tier-based 累加 (跟 teamBonus 公式一致, 方便前端展示)
+            #   - 旧 (PR #69): 1区/2区 整个 subtree 的 recursive 新PV
+            #   - 新 (PR #71): 1区/2区 每个成员 own periodPv 严格精确匹配 4 档累加
+            #   - 业务: 1区新成员 A(500) → 1区贡献 500*20% = 100
+            "leftBranchPv": _team_bonus_walk_subtree(left_branch_subtree),
+            "rightBranchPv": _team_bonus_walk_subtree(right_branch_subtree),
+            # ★ PR #69 → PR #71: 团队培育奖金 = left + right tier-based 累加
             "teamBonus": team_bonus,
             # ★ 2026-07-21 PR #58 + 2026-07-24 PR #67: ownBasic = 本期 own basic commission
             #   - PR #58: 5 子区 P vs L × 15%, 用 children[].periodPv (只看 1 层)

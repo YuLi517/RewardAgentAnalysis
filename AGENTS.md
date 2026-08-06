@@ -290,6 +290,33 @@
 - **代码位置**: `main.py` TEAM_BONUS_TIER_RATES + _team_bonus_tier_rate + _team_bonus_walk_subtree
 - 改 teamBonus 公式必查 §2.11 + §5.34 列出的所有引用点
 
+### 2.11b 基本佣金 commission line PV cap 13334 (PR #72 拍板, 2026-08-06)
+
+- **业务**: 用户 (2026-08-06) 拍板"基本佣金每条佣金线每周 max 13334 PV, 超过按 13334 算, 约合 2000 美金"
+- **业务规则 (PR #72, PR #67 教训: 改算法层时渲染层必须同步对齐)**:
+  - 每条 commission line (5 子区 each) 每周 max 13334 PV
+  - 5 子区 P/L 配对时, 每个子区 PV 用 `min(原 PV, 13334)` 算 commission
+  - carry 仍用原 PV (cap 只影响 commission 算, P/L 剩走 carry, PV 不浪费)
+  - 最大 ownBasic = 13334 × 0.15 = ¥2000.10 ≈ $2000/周
+- **新算法** (渲染层 main.py + 算法层 pair_commission.py):
+  - 旧: P = max(5 子区 subtreePv), L = sum(其他 4), pair = min(P, L), ownBasic = pair × 0.15
+  - 新: P_capped = min(P, 13334), L_capped = min(L, 13334), pair = min(P_capped, L_capped), ownBasic = pair × 0.15
+  - 共享常量: `BASIC_COMMISSION_LINE_PV_CAP = 13334` (period.py)
+  - 工具函数: `_cap_commission_line_pv(pv)` (main.py)
+- **业务场景 (5 子区都 20000 PV)**:
+  - capped: 5×13334, P=13334, L=4×13334=53336, pair=13334, ownBasic=¥2000.10 (max)
+- **业务场景 (P=13335, L=0)**:
+  - P_capped=13334, L_capped=0, pair=0, ownBasic=¥0
+- **测试**:
+  - pytest 15/15 PASS (test_pair_commission + test_settle_e2e)
+  - 单元测试 6 个 case (test_pr72_cap.py): 边界 (13334/13335), 全部触发 cap, 部分触发 cap, 不触发 cap
+  - 不影响 teamBonus (PR #71 单独算, 跟 cap 无关)
+- **代码位置**:
+  - `skills/period.py` BASIC_COMMISSION_LINE_PV_CAP 常量
+  - `main.py` _cap_commission_line_pv 函数 + _build_tree_from_db 应用
+  - `skills/pair_commission.py` _settle_node 应用
+- 改 commission 算法 / 配对规则必查 §2.10 + §2.11 + §5.32 + §5.33 + §5.34 列出的所有引用点
+
 ### 2.12 下单管理 (PR #70 拍板, 2026-07-27)
 
 - **业务**: 用户 2026-07-27 截图反馈 "增加一个下单管理按钮, 里面是一张表, 显示了目前的库存和这次准备下单的数量, 单价, 可以把图里面的内容作为 Sample, 放到数据库表里面. 客户在增加购买的数量的时候, 也相应减少库存的数量, 并且同时计算出各项金额"

@@ -3066,6 +3066,26 @@ def _compute_direct_count_map(db) -> Dict[str, int]:
 
 
 # ============================================================
+# ★ 2026-08-06 PR #72: 基本佣金每条 commission line 每周 max 13334 PV (用户拍板)
+#   业务: "基本佣金：以每个节点计算下面分支的佣金时候，每条佣金线每周最大值是13334PV。
+#         超过的PV值也是按照最高13334PV来计算佣金。约合2000美金."
+#   业务:
+#     - 每条 commission line (= 5 子区 each) 每周 max 13334 PV
+#     - P/L 配对时, 每子区 PV > 13334 算 13334 (cap, 但 carry 仍用原 PV)
+#     - 最大 ownBasic = 13334 * 0.15 = ¥2000.10 ≈ $2000/周
+#   业务场景: 5 子区都 20000 PV → capped 5×13334, P=13334, L=4×13334=53336, pair=13334, ownBasic=¥2000
+#   跟 PR #71 teamBonus 不同维度: 这里是 5 子区 P/L 配对 cap, 不影响团队培育 (tier-based 累加)
+#   跟 carry 关系: cap 只影响 commission 算, 剩余 PV (P_remain) 仍走 carry, 用原 PV
+# ============================================================
+BASIC_COMMISSION_LINE_PV_CAP: int = 13334
+
+
+def _cap_commission_line_pv(pv: int) -> int:
+    """PR #72: 每条 commission line PV cap 13334 (用于 ownBasic 5 子区 P/L 配对)"""
+    return min(int(pv or 0), BASIC_COMMISSION_LINE_PV_CAP)
+
+
+# ============================================================
 # ★ 2026-08-06 PR #71: 团队培育奖金 4 档精确匹配 (用户拍板)
 #   旧 (PR #69): 1区新PV + 2区新PV 全部按 30% 算 (单一比率)
 #   新 (PR #71): 按"每个新成员 own periodPv"严格精确匹配, 4 档:
@@ -3262,10 +3282,16 @@ def _build_tree_from_db(db) -> Dict[str, Any]:
         #     ABCD root 5 子区 P=3000, L=2000, pair=2000, commission=300 ✓
         #     T5 兼容: L2 own=100, 5 子区 P=100 (L3), L=100 (L4) → pair=100, commission=15 ✓
         #   own 直接 carry (不参与配对), 走 _write_settle_result 时累加
+        # ★ PR #72: 5 子区 PV cap 13334 (每条 commission line 每周 max)
+        #   业务: "每条佣金线每周最大值是13334PV, 超过按 13334 算, 约合 2000 美金"
+        #   - P/L 配对时, 每个子区 PV 用 min(原 PV, 13334)
+        #   - carry 仍用原 PV (cap 只影响 commission 算)
+        #   - 最大 ownBasic = 13334 * 0.15 = ¥2000.10 ≈ $2000/周
+        capped_child_pvs = [_cap_commission_line_pv(pv) for pv in real_child_pvs]
         own_basic = 0.0
-        if real_child_pvs:
-            p_pv = max(real_child_pvs)
-            l_sum = sum(real_child_pvs) - p_pv
+        if capped_child_pvs:
+            p_pv = max(capped_child_pvs)
+            l_sum = sum(capped_child_pvs) - p_pv
             sub_pair = min(p_pv, l_sum)
             own_basic = float(sub_pair * 0.15)
         # ★ PR #69: commissionPreview 加上团队培育奖金

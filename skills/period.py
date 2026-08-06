@@ -37,6 +37,13 @@ COMMISSION_RATE: float = 0.15
 PAIRING_BONUS_RATIOS: list = [0.15, 0.10, 0.05, 0.05, 0.05, 0.05, 0.05]  # 7 代分润
 PAIRING_BONUS_MAX_DEPTH: int = 7
 
+# ★ PR #72 (2026-08-06): 基本佣金每条 commission line 每周 max 13334 PV
+#   业务: "每条佣金线每周最大值是13334PV, 超过按 13334 算, 约合 2000 美金"
+#   - 13334 * 0.15 = ¥2000.10 ≈ $2000/周 max ownBasic
+#   - 5 子区 P/L 配对时, 每个子区 PV 用 min(原 PV, 13334) 算 commission
+#   - carry 仍用原 PV (cap 只影响 commission 算)
+BASIC_COMMISSION_LINE_PV_CAP: int = 13334
+
 # 补录窗口长度 (周六到下周一, 3 天)
 SUPPLEMENT_WINDOW_DAYS: int = 3
 

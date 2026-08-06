@@ -44,6 +44,7 @@ from repository import (
 )
 from skills.period import (
     COMMISSION_RATE, PAIRING_BONUS_RATIOS, PAIRING_BONUS_MAX_DEPTH,
+    BASIC_COMMISSION_LINE_PV_CAP,
     get_period_range,
 )
 
@@ -445,14 +446,22 @@ def _settle_node(node: SlotNode, result: SettleResult) -> Tuple[float, int]:
     # ★ officev2 5 叉 P vs L: 1 个最强 P (1 个子区) + 4 个其他 L (最多 4 个子区)
     #   多个相等 max_pv 时, 取 1 个当 P, 其余算 L
     sorted_by_pv_desc = sorted(sub_pvs, key=lambda x: -x[1])
-    p_slot_lid, p_pv = sorted_by_pv_desc[0]  # P 子区 PV (= max)
-    l_pvs = [p for _, p in sorted_by_pv_desc[1:5]]  # L 4 子区 PV
+    p_slot_lid, p_pv = sorted_by_pv_desc[0]  # P 子区 PV (= max, 原始未 cap)
+    l_pvs = [p for _, p in sorted_by_pv_desc[1:5]]  # L 4 子区 PV (原始未 cap)
     sum_rest = sum(l_pvs)
 
     # 3. ★ PR #68: 5 子区 P/L 配对 (own 不参与)
     #   旧 (PR #66): own_pair = MIN(own, P) 参与配对
     #   新 (PR #68): own 不参与, commission = 5 子区 P/L 配对 pair × 15%
-    sub_pair = min(p_pv, sum_rest)
+    # ★ PR #72 (2026-08-06): 每条 commission line 每周 max 13334 PV
+    #   业务: "每条佣金线每周最大值是13334PV, 超过按 13334 算, 约合 2000 美金"
+    #   - P/L 配对时, 每个子区 PV 用 min(原 PV, 13334) 算 commission
+    #   - carry 仍用原 PV (cap 只影响 commission 算, P/L 剩走 carry)
+    #   - 最大 ownBasic = 13334 * 0.15 = ¥2000.10 ≈ $2000/周
+    p_pv_capped = min(p_pv, BASIC_COMMISSION_LINE_PV_CAP)
+    l_pvs_capped = [min(p, BASIC_COMMISSION_LINE_PV_CAP) for p in l_pvs]
+    sum_rest_capped = sum(l_pvs_capped)
+    sub_pair = min(p_pv_capped, sum_rest_capped)
     node_commission = sub_pair * COMMISSION_RATE
 
     # ★ 跳过虚拟根 sentinel (PR #53), 真实根直接进 commission_by_dist

@@ -193,6 +193,11 @@ class Member(Base):
     current_pv_balance: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # ★ 累计 commission (元/PV, 历史总和, 便于侧栏/dashboard 显示)
     total_commission: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    # ★ 2026-08-06 PR #73: 储蓄奖金累计 (美元, 跟 current_pv_balance 独立, 不混)
+    #   - 跨期累计, 每周 settle 时累加 (主 settle + 补录都加, 跟 ownBasic 同步算)
+    #   - 业务: ownBasic ≥ $250 时, savings = min(ownBasic × 15%, $500) 累加
+    #   - 跟 commission 字段不同: commission 是 ¥ (PV × 15%), savings 是 USD (commission × 15%)
+    savings_balance: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     # ★ 2026-07-16 PR #41/42: 角色标签 (人工在 /add 时选, 后续可改)
     #   - NOT NULL: 每个 member 都有显式角色 (默认 '消费股东')
     #   - 7 种角色 (存全名 label, 不用 enum key):
@@ -227,6 +232,7 @@ class Member(Base):
             "max_lines": self.max_lines,
             "current_pv_balance": self.current_pv_balance,
             "total_commission": self.total_commission,
+            "savings_balance": self.savings_balance,  # ★ 2026-08-06 PR #73
             "created_period_id": self.created_period_id,
             "last_period_id": self.last_period_id,
             "created_at": self.created_at,

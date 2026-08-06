@@ -321,6 +321,15 @@ class MemberRepository:
         m.updated_at = _now()
         return m.total_commission
 
+    def add_savings(self, member_id: int, savings_usd: float) -> float:
+        """★ 2026-08-06 PR #73: 累加储蓄奖金 (美元) — 跨期累计, 跟 total_commission 独立"""
+        m = self.get(member_id)
+        if not m:
+            raise ValueError(f"member_id={member_id} 不存在")
+        m.savings_balance = (m.savings_balance or 0.0) + savings_usd
+        m.updated_at = _now()
+        return m.savings_balance
+
     def set_last_period(self, member_id: int, period_id: str) -> None:
         """结算后写 last_period_id (追溯用)"""
         m = self.get(member_id)

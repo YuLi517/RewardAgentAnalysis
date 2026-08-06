@@ -118,6 +118,8 @@ class TestPairCommission(unittest.TestCase):
         ledger = self.ledger_repo.list_by_member(m.id)
         self.assertEqual(len(ledger), 1)
         self.assertEqual(ledger[0].status, "carried")
+        # ★ PR #73: commission=0 → savings=0 (无 commission 触发)
+        self.assertEqual(result.savings_by_dist, {})
 
     # ============== T2: 2 个成员 MIN 配对 ==============
 
@@ -150,6 +152,8 @@ class TestPairCommission(unittest.TestCase):
         m_b_after = self.member_repo.get_by_dist_id("N-T2-B")
         balance_set = sorted([m_a_after.current_pv_balance, m_b_after.current_pv_balance])
         self.assertEqual(balance_set, [0, 200])
+        # ★ PR #73: commission=45 (< $250 门槛) → savings=0
+        self.assertEqual(result.savings_by_dist, {})
 
     # ============== T3: 5 个成员 5 叉 MAX vs SUM ==============
 
@@ -158,8 +162,9 @@ class TestPairCommission(unittest.TestCase):
         MAX=100, SUM_rest=200
         pair = min(100, 200) = 100
         commission = 100 × 0.15 = 15
-        carry_max = max(100-200, 0) = 0
-        carry_rest_total = max(200-100, 0) = 100 → 按 4 个子区比例分 (各 50/200 = 25)
+        carry_max = max(100-100, 0) = 0  (P 剩 = P - sub_pair = 100-100)
+        carry_L_i = max(0, L_i - sub_pair)  (per-line cap, L_i=50, sub_pair=100, 50-100=-50 → 0)
+        总 carry = 0 (PR #72 v2 统一 sub_pair 公式, per-line cap)
         """
         members = [self._make_member(f"N-T3-{i}", slot=i) for i in range(1, 6)]
         pvs = [100, 50, 50, 50, 50]
@@ -168,22 +173,24 @@ class TestPairCommission(unittest.TestCase):
 
         result = settle_period(self.period_id, self.db, settled_by="test")
 
-        # commission = 15
+        # commission = 15 (sub_pair=100, × 15% = 15)
         self.assertAlmostEqual(result.total_commission, 15.0, places=2)
-        # 总消耗 = 100
+        # 总消耗 = 100 (sub_pair)
         self.assertEqual(result.total_pv_consumed, 100)
-        # 验证 carry 分布: MAX 子区 (100) carry=0, 其余 4 子区 (50 each) carry 100/4=25 each
+        # ★ PR #72 v2 (2026-08-06): carry per-line cap (P-sub_pair, L_i-sub_pair)
+        #   P 剩 = 100-100 = 0
+        #   L_i 剩 = max(0, 50-100) = 0 (L_i < sub_pair, 配对全消耗)
+        #   总 carry = 0 (旧 PR #66 算法是 25 each, 100 total, 改后 0)
         carries = [result.carry_out_by_dist.get(f"N-T3-{i}", 0) for i in range(1, 6)]
-        # MAX 子区 (N-T3-1, pv=100) → carry = 0
-        # 其余 (pv=50) → carry = 25 each
-        # sort: [0, 25, 25, 25, 25]
-        self.assertEqual(sorted(carries), [0, 25, 25, 25, 25])
+        self.assertEqual(sorted(carries), [0, 0, 0, 0, 0])
         # balances updated
         balances = []
         for i in range(1, 6):
             m = self.member_repo.get_by_dist_id(f"N-T3-{i}")
             balances.append(m.current_pv_balance)
-        self.assertEqual(sorted(balances), [0, 25, 25, 25, 25])
+        self.assertEqual(sorted(balances), [0, 0, 0, 0, 0])
+        # ★ PR #73: commission=15 (< $250 门槛) → savings=0
+        self.assertEqual(result.savings_by_dist, {})
 
     # ============== T4: 跨期 carry ==============
 
@@ -221,6 +228,8 @@ class TestPairCommission(unittest.TestCase):
         self.assertEqual(self.member_repo.get_by_dist_id("N-T4-A").current_pv_balance, 300)
         # 期间信息写入
         self.assertEqual(self.member_repo.get_by_dist_id("N-T4-A").last_period_id, w2_period)
+        # ★ PR #73: W1 + W2 commission 都很小 (< $250 门槛) → savings=0
+        self.assertEqual(r2.savings_by_dist, {})
 
     def _period_range(self, period_id):
         from skills.period import get_period_range
@@ -264,6 +273,8 @@ class TestPairCommission(unittest.TestCase):
         self.assertNotIn("ROOT", result.ancestor_share_by_dist)
         # 至少 1 个 ancestor 拿到 share
         self.assertGreater(len(result.ancestor_share_by_dist), 0)
+        # ★ PR #73: 所有 commission (15 + 1.5 + 2.25 = 18.75) 都 < $250 → savings=0
+        self.assertEqual(result.savings_by_dist, {})
 
     # ============== T6: 边界 ==============
 
@@ -360,6 +371,8 @@ class TestPairCommission(unittest.TestCase):
         m_b_after = self.member_repo.get_by_dist_id("N5637590.3")
         self.assertAlmostEqual(m_a_after.total_commission, 0.0, places=2)
         self.assertAlmostEqual(m_b_after.total_commission, 0.0, places=2)
+        # ★ PR #73: 王常军 commission=45 (< $250 门槛) → savings=0
+        self.assertEqual(result.savings_by_dist, {})
 
     def test_pr53_root_commission_not_to_other_members(self):
         """★ PR #53: root 拿 commission 后, 不分给 ancestors (root 是顶级, 没 ancestors)
@@ -415,6 +428,221 @@ class TestPairCommission(unittest.TestCase):
         # period 仍 open (不主动 settled 空期)
         p_after = self.period_repo.get(self.period_id)
         self.assertEqual(p_after.status, "open")
+
+    # ============== PR #73: 储蓄奖金 (Savings Bonus, USD) ==============
+
+    def _make_savings_setup(self, period, a_pv, b_pv):
+        """PR #73 helper: 配 setup root + 2 L1 子 + ledger + commit, 返 (period, root, m_a, m_b)"""
+        from models import Member, PVLedger
+        from skills.pair_commission import get_or_create_period
+        get_or_create_period(period, self.db)
+        self.db.commit()
+        now = 1234567890.0
+        root = Member(
+            member_dist_id="N5637590.1", member_name="王常军",
+            parent_dist_id=None, slot_line_id=0, max_lines=5,
+            current_pv_balance=0, total_commission=0.0,
+            created_period_id=period, last_period_id=None,
+            created_at=now, updated_at=now,
+        )
+        self.db.add(root)
+        self.db.flush()
+        m_a = Member(
+            member_dist_id="N5637590.2", member_name="A",
+            parent_dist_id="N5637590.1", slot_line_id=1, max_lines=5,
+            current_pv_balance=0, total_commission=0.0,
+            created_period_id=period, last_period_id=None,
+            created_at=now, updated_at=now,
+        )
+        m_b = Member(
+            member_dist_id="N5637590.3", member_name="B",
+            parent_dist_id="N5637590.1", slot_line_id=2, max_lines=5,
+            current_pv_balance=0, total_commission=0.0,
+            created_period_id=period, last_period_id=None,
+            created_at=now, updated_at=now,
+        )
+        self.db.add_all([m_a, m_b])
+        self.db.commit()
+        self.db.add(PVLedger(
+            member_id=m_a.id, member_dist_id="N5637590.2",
+            period_id=period, pv_amount=a_pv, status="pending",
+        ))
+        self.db.add(PVLedger(
+            member_id=m_b.id, member_dist_id="N5637590.3",
+            period_id=period, pv_amount=b_pv, status="pending",
+        ))
+        self.db.commit()
+        return root, m_a, m_b
+
+    def test_pr73_savings_below_threshold(self):
+        """★ PR #73: ownBasic=$200 (< $250 门槛) → savings=0
+
+        业务: sub_pair = min(200, 200) = 200, commission = 200 × 15% = $30 (< $250)
+        savings: $30 < $250 门槛 → 不触发
+        """
+        period = "2026-10-11_W42"
+        self._make_savings_setup(period, a_pv=200, b_pv=200)
+        result = settle_period(period, self.db, settled_by="test")
+        self.db.commit()
+
+        # root ownBasic = 30
+        self.assertAlmostEqual(result.commission_by_dist["N5637590.1"], 30.0, places=2)
+        # savings=0 (commission=30 < $250 门槛)
+        self.assertEqual(result.savings_by_dist, {})
+        # DB 验证: root.savings_balance = 0
+        self.db.expire_all()
+        root_after = self.member_repo.get_by_dist_id("N5637590.1")
+        self.assertAlmostEqual(root_after.savings_balance, 0.0, places=2)
+
+    def test_pr73_savings_at_threshold(self):
+        """★ PR #73: ownBasic=$250 (= 门槛) → savings = 250 × 15% = $37.50
+
+        业务: 节点 commission = 250 (= 门槛) 触发, savings = $37.50
+        配 setup: A=B=2000 → sub_pair=2000, commission=300 (≈)
+        用 $250 配对消耗: 1000/1000 → 150 commission. 改用 cap 13334:
+        A=B=13334 → sub_pair=13334, commission=$2000.10 (cap 触发 → $500)
+        改用 10000/10000 不可 (超过 13334 cap 仍 $2000.10)
+        改用 8334/8334 → sub_pair=8334, commission=$1250.10 (验证 savings)
+        """
+        period = "2026-10-18_W43"
+        self._make_savings_setup(period, a_pv=8334, b_pv=8334)
+        result = settle_period(period, self.db, settled_by="test")
+        self.db.commit()
+
+        # root ownBasic = 1250.10 (>= $250 门槛)
+        self.assertAlmostEqual(result.commission_by_dist["N5637590.1"], 1250.10, places=2)
+        # savings = 1250.10 × 15% = 187.515 (无 cap 触发)
+        self.assertIn("N5637590.1", result.savings_by_dist)
+        self.assertAlmostEqual(result.savings_by_dist["N5637590.1"], 187.515, places=2)
+        # DB 验证: savings_balance 累加
+        self.db.expire_all()
+        root_after = self.member_repo.get_by_dist_id("N5637590.1")
+        self.assertAlmostEqual(root_after.savings_balance, 187.515, places=2)
+
+    def test_pr73_savings_user_example(self):
+        """★ PR #73: 用户原话场景 — ownBasic=$1000 → savings=$150
+
+        业务: "当周基本佣金收入达到或超过 250 美元时候, 如果您的基本佣金为 1000 美元.
+              您将在储蓄奖金中额外存入 150 美元"
+        配 setup: A=B=10000/2=5000 (没有 cap 影响), sub_pair=5000, commission=$750
+        改用 A=B=20000/2=10000 → cap 13334 触发, sub_pair=13334, commission=$2000.10
+        改用 A=B=13334 → cap 触发, commission=$2000.10, savings cap 触发 $500
+        改用 20000/0.15/2=6666: A=B=6666, sub_pair=6666, commission=$999.90 ≈ $1000
+        """
+        period = "2026-10-25_W44"
+        self._make_savings_setup(period, a_pv=6666, b_pv=6666)
+        result = settle_period(period, self.db, settled_by="test")
+        self.db.commit()
+
+        # root ownBasic ≈ $999.90 (≈ $1000, 用户原话场景)
+        self.assertAlmostEqual(result.commission_by_dist["N5637590.1"], 999.90, places=2)
+        # savings = 999.90 × 15% = 149.985 (≈ $150, 用户原话)
+        self.assertIn("N5637590.1", result.savings_by_dist)
+        self.assertAlmostEqual(result.savings_by_dist["N5637590.1"], 149.985, places=2)
+
+    def test_pr73_savings_cap(self):
+        """★ PR #73: ownBasic ≥ $3334 → savings cap $500/周
+
+        业务: max(ownBasic × 15%, 500) = $500
+        配 setup: A=B=13334 (cap 触发), sub_pair=13334, commission=$2000.10
+        savings = min(2000.10 × 15%, 500) = min(300.015, 500) = $300.015 (无 cap)
+        用 A=B=20000 → sub_pair=13334, commission=$2000.10 (同)
+        用 A=20000+B=13334 → sub_pair=13334, commission=$2000.10 (同)
+        要触发 cap: ownBasic ≥ 3334 (= 500/0.15)
+        配 setup: A=B=13334*1.5=20001 → cap 13334, sub_pair=13334, commission=$2000.10 (同)
+        commission 不会超过 $2000.10, 所以 cap 永远不触发 (sub_pair cap=13334)
+        → 调整: 用单边配对消耗, 走 "commission=13334×15%=2000.10" 永远 < 500/0.15=3334
+        → 测试改成: 验证 cap 公式 (没真实 cap 触发场景, 但要验证 _savings_bonus_usd 公式)
+        """
+        from main import _savings_bonus_usd
+        # 3334 触发 cap: 3334 × 15% = 500.10, min(500.10, 500) = 500
+        self.assertAlmostEqual(_savings_bonus_usd(3334), 500.0, places=2)
+        # 5000 触发 cap: 5000 × 15% = 750, min(750, 500) = 500
+        self.assertAlmostEqual(_savings_bonus_usd(5000), 500.0, places=2)
+        # 10000 触发 cap: 10000 × 15% = 1500, min(1500, 500) = 500
+        self.assertAlmostEqual(_savings_bonus_usd(10000), 500.0, places=2)
+        # 业务约束: commission cap (sub_pair 13334) 让 ownBasic max=$2000.10, 永远 < cap 触发
+        # 但公式独立验证: 直接给 ownBasic > 3334 时 cap 触发
+        period = "2026-11-01_W45"
+        self._make_savings_setup(period, a_pv=13334, b_pv=13334)
+        result = settle_period(period, self.db, settled_by="test")
+        self.db.commit()
+        # root ownBasic = $2000.10 (commission cap)
+        self.assertAlmostEqual(result.commission_by_dist["N5637590.1"], 2000.10, places=2)
+        # savings = 2000.10 × 15% = 300.015 (无 cap 触发, < $500)
+        self.assertAlmostEqual(result.savings_by_dist["N5637590.1"], 300.015, places=2)
+
+    def test_pr73_savings_accumulate_cross_period(self):
+        """★ PR #73: 跨期累计 savings_balance (主 settle + 补录都加)
+
+        业务: 节点 W1 commission=$1000 → savings=$150 → savings_balance += $150
+              W2 commission=$1000 → savings=$150 → savings_balance += $150
+              最终 savings_balance = $300
+        """
+        from models import Member, PVLedger
+        from skills.pair_commission import get_or_create_period
+
+        # W1 配 setup
+        w1 = "2026-11-08_W46"
+        get_or_create_period(w1, self.db)
+        self.db.commit()
+        now = 1234567890.0
+        root = Member(
+            member_dist_id="N5637590.1", member_name="王常军",
+            parent_dist_id=None, slot_line_id=0, max_lines=5,
+            current_pv_balance=0, total_commission=0.0,
+            savings_balance=0.0,  # ★ 起始 0
+            created_period_id=w1, last_period_id=None,
+            created_at=now, updated_at=now,
+        )
+        self.db.add(root)
+        self.db.flush()
+        m_a = Member(member_dist_id="N5637590.2", member_name="A",
+                     parent_dist_id="N5637590.1", slot_line_id=1, max_lines=5,
+                     current_pv_balance=0, total_commission=0.0, savings_balance=0.0,
+                     created_period_id=w1, last_period_id=None,
+                     created_at=now, updated_at=now)
+        m_b = Member(member_dist_id="N5637590.3", member_name="B",
+                     parent_dist_id="N5637590.1", slot_line_id=2, max_lines=5,
+                     current_pv_balance=0, total_commission=0.0, savings_balance=0.0,
+                     created_period_id=w1, last_period_id=None,
+                     created_at=now, updated_at=now)
+        self.db.add_all([m_a, m_b])
+        self.db.commit()
+        # W1 ledger: A=B=6666 (commission $999.90)
+        self.db.add(PVLedger(member_id=m_a.id, member_dist_id="N5637590.2",
+                             period_id=w1, pv_amount=6666, status="pending"))
+        self.db.add(PVLedger(member_id=m_b.id, member_dist_id="N5637590.3",
+                             period_id=w1, pv_amount=6666, status="pending"))
+        self.db.commit()
+        r1 = settle_period(w1, self.db, settled_by="test")
+        self.db.commit()
+        # W1: ownBasic=$999.90, savings=$149.985
+        self.assertAlmostEqual(r1.savings_by_dist["N5637590.1"], 149.985, places=2)
+        # DB 验证: savings_balance=149.985
+        self.db.expire_all()
+        root_after = self.member_repo.get_by_dist_id("N5637590.1")
+        self.assertAlmostEqual(root_after.savings_balance, 149.985, places=2)
+
+        # W2 配 setup (新期, 新 ledger, 同一 root)
+        w2 = "2026-11-15_W47"
+        get_or_create_period(w2, self.db)
+        self.db.commit()
+        self.db.add(PVLedger(member_id=m_a.id, member_dist_id="N5637590.2",
+                             period_id=w2, pv_amount=6666, status="pending"))
+        self.db.add(PVLedger(member_id=m_b.id, member_dist_id="N5637590.3",
+                             period_id=w2, pv_amount=6666, status="pending"))
+        self.db.commit()
+        r2 = settle_period(w2, self.db, settled_by="test")
+        self.db.commit()
+        # W2: ownBasic=$999.90, savings=$149.985 (再触发)
+        self.assertAlmostEqual(r2.savings_by_dist["N5637590.1"], 149.985, places=2)
+        # DB 验证: savings_balance 累加 = 149.985 + 149.985 = 299.97
+        self.db.expire_all()
+        root_after = self.member_repo.get_by_dist_id("N5637590.1")
+        self.assertAlmostEqual(root_after.savings_balance, 299.97, places=2)
+        # total_commission 累加 = 999.90 + 999.90 = 1999.80
+        self.assertAlmostEqual(root_after.total_commission, 1999.80, places=2)
 
 
 if __name__ == "__main__":

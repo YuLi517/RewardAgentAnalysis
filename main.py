@@ -2376,9 +2376,13 @@ def _tree_render_node(
     #   - 基本佣金 = ownBasic (5 子区 P/L 配对 × 15%, own 不参与)
     #   - 对等奖金 = pairBonus (7 层对等累加, 子孙 ownBasic 分给祖先)
     #   - 团队培育奖金 = teamBonus (1区+2区 新PV × 30%, 节点自己拿不分给祖先)
+    # ★ 2026-08-06 PR #73: commission 数字直接当美元理解 (commission rate 15% 跟储蓄比例 15% 同源)
+    #   - 用户原话: "在计算基本佣金的时候, 都会用乘以 15%, 结果就可以直接理解为美金了. 不存在汇率计算的问题"
+    #   - 之前示例 ¥2000.10 = $2000.10, 全局 ¥ → $ 符号
     _commission_preview = float(node.get("commissionPreview", 0.0) or 0.0)
     _own_basic_preview = float(node.get("ownBasic", 0.0) or 0.0)
     _team_bonus_preview = float(node.get("teamBonus", 0.0) or 0.0)
+    _savings_preview = float(node.get("savingsPreview", 0.0) or 0.0)  # ★ 2026-08-06 PR #73
     # 对等奖金 = 总 - 基本 - 团队培育 (因为 commissionPreview = own + pair + team)
     _pair_bonus_preview = _commission_preview - _own_basic_preview - _team_bonus_preview
     # 显示规则 (PR #58):
@@ -2392,6 +2396,16 @@ def _tree_render_node(
         and _commission_preview > 0
         and _cur_period_status == "open"
     )
+    # ★ 2026-08-06 PR #73: 储蓄奖金显示规则
+    #   - 触发: ownBasic ≥ $250
+    #   - savings > 0 才显示
+    #   - 跟 commission preview 一样, only period=open
+    _show_savings_preview = (
+        _savings_preview > 0
+        and _cur_period_status == "open"
+        and (bool(children) or is_root)
+        and not available
+    )
     _commission_html = ""
     if _show_commission_preview:
         # ★ PR #69 → PR #71: tooltip 文案更新 — 团队培育奖金按 4 档精确匹配
@@ -2400,13 +2414,27 @@ def _tree_render_node(
         #     - 200 PV → 15% / 500 PV → 20% / 1000 PV → 25% / 1500 PV → 30%
         #     - 其它 PV (300/700/1200/2000/...) → 0% (严格精确, 不套档)
         #   tooltip 三段文案: 基本佣金 + 对等奖金 + 团队培育奖金 = 总额
+        # ★ PR #73: ¥ → $ 符号
         _commission_html = (
             f'<span class="tv-commission-preview" '
-            f'title="本期可拿 — 基本佣金: ¥{_own_basic_preview:.2f} '
-            f'+ 对等奖金: ¥{_pair_bonus_preview:.2f} '
-            f'+ 团队培育奖金: ¥{_team_bonus_preview:.2f} '
-            f'= ¥{_commission_preview:.2f}">'
-            f'本期可拿 ¥{_commission_preview:.2f}</span>'
+            f'title="本期可拿 — 基本佣金: ${_own_basic_preview:.2f} '
+            f'+ 对等奖金: ${_pair_bonus_preview:.2f} '
+            f'+ 团队培育奖金: ${_team_bonus_preview:.2f} '
+            f'= ${_commission_preview:.2f}">'
+            f'本期可拿 ${_commission_preview:.2f}</span>'
+        )
+    # ★ 2026-08-06 PR #73: 储蓄奖金徽章 (绿色, 跟 commission preview 紫色区分)
+    #   - 业务: ownBasic ≥ $250 时, savings = min(ownBasic × 15%, $500)
+    #   - 美元, 跟 commission 数字同源
+    #   - 节点自己拿, 不分给祖先
+    _savings_html = ""
+    if _show_savings_preview:
+        _savings_html = (
+            f'<span class="tv-savings-preview" '
+            f'title="储蓄奖金 — 基本佣金 ≥ $${SAVINGS_BONUS_USD_THRESHOLD:.0f} 触发, '
+            f'存入比例: ownBasic × {SAVINGS_BONUS_USD_RATE*100:.0f}%, '
+            f'上限 ${SAVINGS_BONUS_USD_CAP:.0f}/周">'
+            f'💰 储蓄 +${_savings_preview:.2f}</span>'
         )
 
     # 容器: 用 <details> 折叠
@@ -2433,6 +2461,8 @@ def _tree_render_node(
             # ★ PR #54: 剩余 PV 徽章 (跨期 carry, 结算后更新)
             f'{carry_pv_badge}'
             f'{_commission_html}'
+            # ★ 2026-08-06 PR #73: 储蓄奖金徽章 (绿色, 紧跟 commission 紫色)
+            f'{_savings_html}'
             f'{total_comm_badge}'
             f'</div>'
             f'</summary>'
@@ -2459,6 +2489,8 @@ def _tree_render_node(
             # ★ PR #54: 剩余 PV 徽章 (跨期 carry, 结算后更新)
             f'{carry_pv_badge}'
             f'{_commission_html}'
+            # ★ 2026-08-06 PR #73: 储蓄奖金徽章
+            f'{_savings_html}'
             f'{total_comm_badge}'
             f'</div>'
             f'</div>'
@@ -3132,6 +3164,27 @@ def _team_bonus_walk_subtree(node: Optional[Dict[str, Any]]) -> float:
 
 
 # ============================================================
+# ★ 2026-08-06 PR #73: 储蓄奖金 preview (跟 settle 公式一致)
+#   - 业务: ownBasic ≥ $250 USD 时, savings = min(ownBasic × 15%, $500)
+#   - 跟 ownBasic 联动, commission 数字直接当美元理解 (无汇率)
+#   - 节点自己拿, 不分给祖先
+#   - preview 跟 settle 一致
+# ============================================================
+SAVINGS_BONUS_USD_THRESHOLD: float = 250.0
+SAVINGS_BONUS_USD_RATE: float = 0.15
+SAVINGS_BONUS_USD_CAP: float = 500.0
+
+
+def _savings_bonus_usd(own_basic: float) -> float:
+    """★ 2026-08-06 PR #73: 储蓄奖金 (USD) = min(ownBasic × 15%, $500) if ownBasic ≥ $250 else 0
+    commission 数字直接当美元理解 (无汇率, 跟 COMMISSION_RATE=0.15 同源)
+    """
+    if own_basic < SAVINGS_BONUS_USD_THRESHOLD:
+        return 0.0
+    return round(min(float(own_basic) * SAVINGS_BONUS_USD_RATE, SAVINGS_BONUS_USD_CAP), 4)
+
+
+# ============================================================
 # ★ 2026-07-16 PR #39: tree view 以 DB 为权威 — 完全从 DB 构建 5 叉树 dict
 #   替代之前的 _sync_raw_names_with_db / _compute_orphan_set / _inject_direct_count
 #   返回结构跟 json fixture 兼容 (递归 dict, 含 distId/name/parentLineId/maxLines/children/available)
@@ -3267,33 +3320,46 @@ def _build_tree_from_db(db) -> Dict[str, Any]:
             elif cd_slot == 2:
                 right_branch_subtree = cd
         team_bonus = _team_bonus_walk_subtree(left_branch_subtree) + _team_bonus_walk_subtree(right_branch_subtree)
-        # 子区配对: P = max(5 子区 subtreePv), L = sum(其他 4 子区)
+        # 子区配对: P = max(n 子区 subtreePv), L = 其他 (n-1) 子区
         real_child_pvs = [
             int(cd.get("subtreePv", 0) or 0)
             for cd in child_dicts
             if not cd.get("available")
         ]
-        # ★ PR #68 翻案 PR #67: 节点 commission = sub_pair × 15% (5 子区 P/L 配对)
+        # ★ PR #68 翻案 PR #67: 节点 commission = sub_pair × 15% (n 子区 P/L 配对)
         #   旧 (PR #67): (own_pair + sub_pair) × 15% — own 参与配对, 错!
-        #     用户截图 (2026-07-27) 反馈: "A 本期应该拿不到佣金, 因为他的 2 区还没有挂任何新成员"
-        #     A (own=1500, 5 子区 C=1000, 4 空) 旧算法 own_pair=1000, commission=150 错算
-        #   新 (PR #68): own 不参与, 只算 5 子区 P/L 配对
-        #     A 5 子区 P=1000, L=0, pair=0, commission=0 ✓
-        #     ABCD root 5 子区 P=3000, L=2000, pair=2000, commission=300 ✓
-        #     T5 兼容: L2 own=100, 5 子区 P=100 (L3), L=100 (L4) → pair=100, commission=15 ✓
-        #   own 直接 carry (不参与配对), 走 _write_settle_result 时累加
-        # ★ PR #72: 5 子区 PV cap 13334 (每条 commission line 每周 max)
+        #   新 (PR #68): own 不参与, 只算 n 子区 P/L 配对
+        # ★ PR #72: 每条 commission line 每周 max 13334 PV
         #   业务: "每条佣金线每周最大值是13334PV, 超过按 13334 算, 约合 2000 美金"
-        #   - P/L 配对时, 每个子区 PV 用 min(原 PV, 13334)
-        #   - carry 仍用原 PV (cap 只影响 commission 算)
-        #   - 最大 ownBasic = 13334 * 0.15 = ¥2000.10 ≈ $2000/周
+        #   业务区分 (用户 2026-08-06 拍板):
+        #     - 2 叉 (2 子区, 1 P + 1 L): sub_pair = min(P, L) × 15% (cap 13334)
+        #     - >2 叉 (3/4/5 子区, 1 P + (n-1) L): (n-1) 个 L 线各 cap 13334 × 15%
+        #       P 不参与 commission 算
+        #       每条 L 线 commission = min(L, 13334) × 15%
+        #       carry: 所有 n 条线 (P + L) 各 carry = max(0, PV - 13334)
+        #   业务示例 (5 子区, 各 20000 PV):
+        #     - 旧 (sub_pair): 4 L lines × 13334 × 15% = 8000 (错, P 算 1 pair)
+        #     - 新 (L-lines): 4 L lines × 13334 × 15% = 8000.40 (P 0)
+        #   业务示例 (2 子区, 各 20000 PV):
+        #     - sub_pair = min(13334, 13334) = 13334
+        #     - commission = 13334 × 15% = 2000.10
+        #   carry: P_carry = max(0, P - 13334), L_carry = max(0, L - 13334) (per-line cap)
         capped_child_pvs = [_cap_commission_line_pv(pv) for pv in real_child_pvs]
         own_basic = 0.0
         if capped_child_pvs:
-            p_pv = max(capped_child_pvs)
-            l_sum = sum(capped_child_pvs) - p_pv
-            sub_pair = min(p_pv, l_sum)
-            own_basic = float(sub_pair * 0.15)
+            n_lines = len(capped_child_pvs)
+            if n_lines == 2:
+                # 2 叉: sub_pair = min(P_capped, L_capped) × 15%
+                p_pv = max(capped_child_pvs)
+                l_sum = sum(capped_child_pvs) - p_pv
+                sub_pair = min(p_pv, l_sum)
+                own_basic = float(sub_pair * 0.15)
+            else:
+                # >2 叉: (n-1) 个 L 线各 cap 13334 × 15%, P 不参与
+                # 找 P (最强) + (n-1) L 线 (其它)
+                sorted_capped = sorted(capped_child_pvs, reverse=True)
+                l_pvs_capped = sorted_capped[1:]  # (n-1) 个 L 线 (cap 后)
+                own_basic = float(sum(l_pvs_capped) * 0.15)
         # ★ PR #69: commissionPreview 加上团队培育奖金
         #   旧 (PR #58-#68): ownBasic + pairBonus (7 层对等)
         #   新 (PR #69): ownBasic + pairBonus (7 层对等) + teamBonus (团队培育奖金)
@@ -3346,6 +3412,12 @@ def _build_tree_from_db(db) -> Dict[str, Any]:
             #   - 初始化 = ownBasic, _accumulate_pair_bonus 累加子孙分润
             #   - PR #69: 再加 teamBonus (团队培育奖金)
             "commissionPreview": commission_preview,
+            # ★ 2026-08-06 PR #73: 储蓄奖金 preview (美元, ownBasic ≥ 250 才显示)
+            #   - 跟 ownBasic 联动: savings = min(ownBasic × 15%, $500)
+            #   - 业务: 当周基本佣金 ≥ $250 时触发, 上限 $500
+            "savingsPreview": _savings_bonus_usd(own_basic),
+            # ★ 2026-08-06 PR #73: 储蓄奖金累计 (历史总和, USD, 来自 Member.savings_balance)
+            "savingsBalance": float(member.savings_balance or 0.0),
             "children": child_dicts,
         }
 
@@ -3974,6 +4046,8 @@ def api_period_settle(
             "own_commission": round(own_comm, 4),
             "ancestor_share": round(ancestor_share, 4),
             "total_commission": round(total_comm, 4),
+            "savings": round(result.savings_by_dist.get(dist_id, 0.0), 4),  # ★ 2026-08-06 PR #73
+            "savings_balance": round(m.savings_balance or 0.0, 4),  # ★ PR #73 累加后
             "last_period_id": m.last_period_id or "",
         })
 
@@ -3982,6 +4056,9 @@ def api_period_settle(
         "total_commission": round(result.total_commission, 4),
         "total_pv_consumed": result.total_pv_consumed,
         "total_pv_carried": sum(result.carry_out_by_dist.values()),
+        # ★ 2026-08-06 PR #73: 储蓄奖金总额 (本期所有节点 savings 累加, USD)
+        "total_savings": round(sum(result.savings_by_dist.values()), 4),
+        "savings_count": len(result.savings_by_dist),
         "member_count": result.member_count,
         "pairs_log": result.pairs_log,
         # ★ PR #9: 期间成员详情
@@ -4017,6 +4094,7 @@ def api_period_summary(period_id: str, db: Session = Depends(get_db)):
             "member_name": m.member_name or "",
             "current_pv_balance": m.current_pv_balance or 0,
             "total_commission": m.total_commission or 0.0,
+            "savings_balance": m.savings_balance or 0.0,  # ★ 2026-08-06 PR #73
             "created_period_id": m.created_period_id or "",
             "last_period_id": m.last_period_id or "",
         }
@@ -4164,6 +4242,7 @@ def api_members_list(limit: int = 200, db: Session = Depends(get_db)):
                 # ★ PR #38: 直推人数 (DB members.parent_dist_id 聚合)
                 "direct_count": direct_count_map.get(m.member_dist_id, 0),
                 "total_commission": m.total_commission or 0.0,
+                "savings_balance": m.savings_balance or 0.0,  # ★ 2026-08-06 PR #73
                 "created_period_id": m.created_period_id or "",
                 "last_period_id": m.last_period_id or "",
                 # ★ 2026-07-16 PR #41: 角色 (消费股东/预备合伙人/合伙人员工/初级管理/中级管理/高级管理/Inactive)

@@ -29,7 +29,7 @@ def _make_test_db():
 
 
 class TestPr58CommissionField(unittest.TestCase):
-    """T1+T2: commissionPreview 字段 + z1=500 + z2=300 → 王常军 ¥45"""
+    """T1+T2: commissionPreview 字段 + z1=500 + z2=300 → 王常军 $45"""
 
     def setUp(self):
         self.engine, Session = _make_test_db()
@@ -67,17 +67,19 @@ class TestPr58CommissionField(unittest.TestCase):
         self.engine.dispose()
 
     def test_root_commission_preview_45(self):
-        """z1=500 + z2=300 → 王常军 ownBasic = 45, teamBonus = 500*0.3 + 300*0.3 = 240
-        total = 45 + 0 + 240 = 285 (PR #69 加 teamBonus)
+        """z1=500 + z2=300 → 王常军 ownBasic = 45, teamBonus (PR #71 4 档精确匹配):
+        1区: z1.1=500 → 500×20% = 100, 2区: z2.1=300 → 0 (300 不在 4 档)
+        total teamBonus = 100 + 0 = 100
+        total = 45 + 0 + 100 = 145
         """
         tree = _build_tree_from_db(self.db)
         self.assertEqual(tree["distId"], "N5637590.1")
         self.assertAlmostEqual(tree["ownBasic"], 45.0, places=2)
-        # ★ PR #69: commissionPreview = ownBasic + pairBonus + teamBonus
-        #   1区=500, 2区=300, teamBonus = 500*0.3 + 300*0.3 = 240
-        #   total = 45 + 0 + 240 = 285
-        self.assertAlmostEqual(tree["teamBonus"], 240.0, places=2)
-        self.assertAlmostEqual(tree["commissionPreview"], 285.0, places=2)
+        # ★ PR #71: commissionPreview = ownBasic + pairBonus + teamBonus (4 档精确匹配)
+        #   1区: z1.1=500 → 100, 2区: z2.1=300 → 0
+        #   total = 45 + 0 + 100 = 145
+        self.assertAlmostEqual(tree["teamBonus"], 100.0, places=2)
+        self.assertAlmostEqual(tree["commissionPreview"], 145.0, places=2)
 
     def test_z1_z2_ownbasic_zero(self):
         """z1/z2 没 L2 子, ownBasic = 0"""
@@ -96,11 +98,11 @@ class TestPr58CommissionField(unittest.TestCase):
         self.assertAlmostEqual(tree["commissionPreview"], 0.0, places=2)
 
     def test_render_html_shows_preview_badge(self):
-        """HTML 渲染含 '本期可拿 ¥285.00' (PR #69 加 teamBonus 240)"""
+        """HTML 渲染含 '本期可拿 $145.00' (PR #71 4 档精确匹配 teamBonus 100)"""
         tree = _build_tree_from_db(self.db)
         html = _build_tree_render_html(tree, highlight_map={})
-        self.assertIn("本期可拿 ¥285.00", html,
-            f"HTML 应渲染 '本期可拿 ¥285.00' 徽章 (PR #69 加 teamBonus). HTML excerpt: {html[:500]}")
+        self.assertIn("本期可拿 $145.00", html,
+            f"HTML 应渲染 '本期可拿 $145.00' 徽章 (PR #71 teamBonus=100). HTML excerpt: {html[:500]}")
 
 
 class TestPr58PairBonus(unittest.TestCase):
@@ -159,15 +161,15 @@ class TestPr58PairBonus(unittest.TestCase):
 
     def test_root_pair_bonus_675(self):
         """★ PR #58 核心: 王常军 pairBonus 来自 z1.ownBasic=45 × 0.15 = 6.75
-        ★ PR #69: 加 teamBonus 1区=800 (z1 subtree) × 0.3 = 240
-        total = 0 + 6.75 + 240 = 246.75
+        ★ PR #71: teamBonus 4 档精确匹配 — 1区: z1.1=500 → 500×20% = 100
+        total = 0 + 6.75 + 100 = 106.75
         """
         tree = _build_tree_from_db(self.db)
-        # ★ PR #69: 1区 = z1 subtree (z1.1=500 + z1.2=300) = 800
-        #   teamBonus = 800 × 0.3 = 240
-        self.assertAlmostEqual(tree["teamBonus"], 240.0, places=2)
-        self.assertAlmostEqual(tree["commissionPreview"], 246.75, places=2,
-            msg=f"王常军 commissionPreview 应 = 0 + 6.75 + 240 = 246.75, 实际: {tree['commissionPreview']}")
+        # ★ PR #71: 1区: z1.1=500 → 500×20% = 100, z1.2=300 → 0
+        #   teamBonus = 100
+        self.assertAlmostEqual(tree["teamBonus"], 100.0, places=2)
+        self.assertAlmostEqual(tree["commissionPreview"], 106.75, places=2,
+            msg=f"王常军 commissionPreview 应 = 0 + 6.75 + 100 = 106.75, 实际: {tree['commissionPreview']}")
 
 
 class TestPr58Depth7Pairing(unittest.TestCase):
@@ -208,23 +210,23 @@ class TestPr58Depth7Pairing(unittest.TestCase):
 
     def test_4_level_pair_bonus(self):
         """4 层: c+d 配对 → b.ownBasic=45 → a.pair=6.75, root.pair=4.50
-        ★ PR #69: teamBonus 也算:
-        - a: 1区 = b subtree = 800 (c+d), 2区 = empty. teamBonus = 800*0.3 = 240
-        - root: 1区 = a subtree = 800 (a 没 own, b subtree = 800), 2区 = empty. teamBonus = 800*0.3 = 240
-        - a.commissionPreview = 0 + 6.75 + 240 = 246.75
-        - root.commissionPreview = 0 + 4.50 + 240 = 244.50
+        ★ PR #71: teamBonus 4 档精确匹配 — 1区: c=500 → 500×20%=100, d=300 → 0
+        - a: 1区 = b subtree (b=0, c=500, d=300), tier-based: c 100 + d 0 + b 0 = 100
+        - root: 1区 = a subtree (a=0, b=0, c=500, d=300), tier-based: 100
+        - a.commissionPreview = 0 + 6.75 + 100 = 106.75
+        - root.commissionPreview = 0 + 4.50 + 100 = 104.50
         """
         tree = _build_tree_from_db(self.db)
         a = next(c for c in tree["children"] if not c.get("available"))
         b = next(c for c in a["children"] if not c.get("available"))
         # b.ownBasic = 45 (c+d 配对)
         self.assertAlmostEqual(b["ownBasic"], 45.0, places=2)
-        # a.commissionPreview = a.ownBasic(0) + pair from b(45 × 0.15) + a.teamBonus(240) = 246.75
-        self.assertAlmostEqual(a["teamBonus"], 240.0, places=2)
-        self.assertAlmostEqual(a["commissionPreview"], 246.75, places=2)
-        # root.commissionPreview = pair from b(45 × 0.10) + root.teamBonus(240) = 244.50
-        self.assertAlmostEqual(tree["teamBonus"], 240.0, places=2)
-        self.assertAlmostEqual(tree["commissionPreview"], 244.50, places=2)
+        # a.commissionPreview = a.ownBasic(0) + pair from b(45 × 0.15) + a.teamBonus(100) = 106.75
+        self.assertAlmostEqual(a["teamBonus"], 100.0, places=2)
+        self.assertAlmostEqual(a["commissionPreview"], 106.75, places=2)
+        # root.commissionPreview = pair from b(45 × 0.10) + root.teamBonus(100) = 104.50
+        self.assertAlmostEqual(tree["teamBonus"], 100.0, places=2)
+        self.assertAlmostEqual(tree["commissionPreview"], 104.50, places=2)
 
 
 class TestPr58UI(unittest.TestCase):
@@ -236,9 +238,9 @@ class TestPr58UI(unittest.TestCase):
             "main.py _tree_render_node 渲染应含 'tv-commission-preview' class")
 
     def test_main_py_has_本期可拿_label(self):
-        """main.py 徽章文本 '本期可拿 ¥X.XX'"""
-        self.assertIn("本期可拿 ¥", MAIN_PY,
-            "main.py 徽章应包含 '本期可拿 ¥X.XX' 文本")
+        """main.py 徽章文本 '本期可拿 $X.XX' (PR #73 commission 直接当美元)"""
+        self.assertIn("本期可拿 $", MAIN_PY,
+            "main.py 徽章应包含 '本期可拿 $X.XX' 文本 (PR #73: commission 数字直接当美元)")
 
     def test_main_py_has_own_pair_tooltip(self):
         """★ PR #69: tooltip 文案 — 基本佣金 + 对等奖金 + 团队培育奖金
@@ -320,8 +322,8 @@ class TestPr58SettledHidesPreview(unittest.TestCase):
 
     def test_settled_hides_preview_in_html(self):
         tree = _build_tree_from_db(self.db)
-        # ★ PR #69: commissionPreview 现在 = ownBasic 45 + pairBonus 0 + teamBonus 240 = 285
-        self.assertAlmostEqual(tree["commissionPreview"], 285.0, places=2)
+        # ★ PR #71: commissionPreview = ownBasic 45 + pairBonus 0 + teamBonus 100 (4 档精确) = 145
+        self.assertAlmostEqual(tree["commissionPreview"], 145.0, places=2)
         self.assertEqual(tree["currentPeriodStatus"], "settled")
         # HTML 渲染: 不显示徽章
         html = _build_tree_render_html(tree, highlight_map={})

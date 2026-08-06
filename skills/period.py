@@ -47,6 +47,28 @@ BASIC_COMMISSION_LINE_PV_CAP: int = 13334
 # 补录窗口长度 (周六到下周一, 3 天)
 SUPPLEMENT_WINDOW_DAYS: int = 3
 
+# ★ 2026-08-06 PR #73: 储蓄奖金 (Savings Bonus) 业务规则
+#   用户原话: "当周的基本佣金收入达到或超过 250 美元时候, 如果您的基本佣金为 1000 美元.
+#             您将在储蓄奖金中额外存入 150 美元. 最高 500 美金."
+#   业务要点 (用户 2026-08-06 拍板):
+#     - 触发门槛: ownBasic (基本佣金) >= 250 USD
+#     - 存入比例: ownBasic × 15% (跟 commission rate 同一个 15%, 业务上 commission 数字直接当美元理解)
+#     - 存入上限: $500 / 周 (per 周 per 节点)
+#     - 累计: 跨期累计到 members.savings_balance 字段 (跟 current_pv_balance 独立, 不混)
+#     - 业务示例 (用户拍板):
+#         ownBasic = $1000  → savings = $150 (1000×15%, 用户原话)
+#         ownBasic = $200   → savings = 0 (< $250 门槛, 不触发)
+#         ownBasic = $300   → savings = $45 (300×15%)
+#         ownBasic = $2000  → savings = $300 (2000×15%)
+#         ownBasic = $3334  → savings = $500.10 (3334×15% = 500.10, 触发 cap → $500)
+#         ownBasic = $5000+ → savings = $500 (cap)
+#     - 跟 ownBasic 联动: 只算 ownBasic (基本佣金), 不含 pairBonus/teamBonus
+#     - 节点自己拿, 不分给 7 代祖先
+#     - preview 跟 settle 一致: 实时算 + 主 settle 算
+SAVINGS_BONUS_USD_THRESHOLD: float = 250.0  # 触发门槛
+SAVINGS_BONUS_USD_RATE: float = 0.15        # 存入比例 (跟 COMMISSION_RATE 同源)
+SAVINGS_BONUS_USD_CAP: float = 500.0        # 每周上限 (per 节点)
+
 
 # ============== 周期 ID 解析 ==============
 

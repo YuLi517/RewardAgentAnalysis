@@ -119,17 +119,17 @@
   - `pairBonus` = 7 层对等, 按 `[0.15, 0.10, 0.05×5]` 分给 1/2/3/4/5/6/7 代祖先
   - `commissionPreview = ownBasic + pairBonus`
   - 跟 `settle_period._settle_node + _apply_pairing_bonus` 规则**完全一致**
-- **渲染**: 紫色徽章 `本期可拿 ¥X.XX`
+- **渲染**: 紫色徽章 `本期可拿 $X.XX`
   - 只在 `currentPeriodStatus == "open"` 时显示 (settled 期已落账, 不算 preview)
   - 0 commission 不显示
-  - tooltip 详细: `own basic: ¥X + 7层对等 pair: ¥Y = ¥Z\n基于本期 periodPv 模拟`
+  - tooltip 详细: `own basic: $X + 7层对等 pair: $Y = $Z\n基于本期 periodPv 模拟`
 - **视觉分级**:
   - 绿 (#DCFCE7 / #166534)  本期 PV (新增)
   - 黄 (#FEF3C7 / #92400E)  剩余 PV (carry)
   - 金 (#FEF3C7 / #92400E)  累计 $ (历史 settle)
   - 紫 (#EDE9FE / #6D28D9)  本期可拿 (模拟, period=open) ← **新**
   - 紫色暗示"未来/预测", 跟"实际累计"区分
-- **业务示例**: z1=500 + z2=300 → 王常军 ownBasic=¥45, pairBonus=¥0, 总 ¥45
+- **业务示例**: z1=500 + z2=300 → 王常军 ownBasic=$45, pairBonus=$0, 总 $45
 - 改 commission preview 必查 §5.25 列出的所有引用点
 
 ### 2.6 PV 输入框自由输入 + 自定义 spinner (PR #59/#60 拍板, 2026-07-21)
@@ -200,7 +200,7 @@
 
 ### 2.10 节点 own 不参与 commission 配对 + 5 子区 P/L 配对 (PR #68 拍板, 2026-07-27) — **翻案 PR #66 own-P 配对**
 
-- **业务**: 用户截图 (2026-07-27) 反馈 A 节点显示 "本期可拿 ¥150", 用户说 "A 本期应该拿不到佣金, 因为他的 2 区还没有挂任何新成员"
+- **业务**: 用户截图 (2026-07-27) 反馈 A 节点显示 "本期可拿 $150", 用户说 "A 本期应该拿不到佣金, 因为他的 2 区还没有挂任何新成员"
 - **PR #66 旧算法 (own-P 配对消耗, 错!)**:
   - `own_pair = MIN(own, P)` 让 own 跟 P 配对, own 算 commission
   - 业务验证: A (own=1500, 5 子区 C=1500) 旧算法 own_pair=1500, commission=150 — **错!**
@@ -248,16 +248,16 @@
   - 旧 (PR #58-#68): ownBasic + pairBonus (7 层对等)
   - 新 (PR #69): ownBasic + pairBonus + teamBonus
 - **Tooltip 文案变更** (用户截图反馈):
-  - 旧: "本期可拿 (模拟) — own basic: ¥X + 7层对等 pair: ¥Y = ¥Z\n基于本期 periodPv 模拟, 跟 settle_period 规则一致"
-  - 新: "本期可拿 — 基本佣金: ¥X + 对等奖金: ¥Y + 团队培育奖金: ¥Z = ¥W"
+  - 旧: "本期可拿 (模拟) — own basic: $X + 7层对等 pair: $Y = $Z\n基于本期 periodPv 模拟, 跟 settle_period 规则一致"
+  - 新: "本期可拿 — 基本佣金: $X + 对等奖金: $Y + 团队培育奖金: $Z = $W"
   - 旧文案移除: "（模拟）" / "own basic" / "7层对等 pair" / "基于本期 periodPv 模拟..." 句
   - 新文案使用: "基本佣金" / "对等奖金" / "团队培育奖金"
 - **业务场景 (6 member 树, A=1500/B=1500/C=1000/D=1500/E=1200)**:
-  - root: ownBasic 450 + pairBonus 22.5 + teamBonus 2010 = ¥2482.50
+  - root: ownBasic 450 + pairBonus 22.5 + teamBonus 2010 = $2482.50
     (1区=A subtree=3700, 2区=B subtree=3000, 3700*0.3 + 3000*0.3 = 2010)
-  - A: ownBasic 150 + pairBonus 0 + teamBonus 660 = ¥810
+  - A: ownBasic 150 + pairBonus 0 + teamBonus 660 = $810
     (1区=C=1000, 2区=E=1200, 1000*0.3 + 1200*0.3 = 660)
-  - B: ownBasic 0 + pairBonus 0 + teamBonus 450 = ¥450
+  - B: ownBasic 0 + pairBonus 0 + teamBonus 450 = $450
     (1区=D=1500, 2区=空=0)
   - C/D/E: 叶子, teamBonus=0
 - 改 tooltip / commission 公式必查 §5.34 列出的所有引用点
@@ -280,11 +280,11 @@
   - 新 (PR #71): 递归走 1区/2区 subtree, 对每个成员 own periodPv 应用 4 档精确匹配 rate, 累加
   - 关键函数: `_team_bonus_tier_rate(pv)` + `_team_bonus_walk_subtree(node)`
 - **业务场景 (A5 PV=1000 在 2区, A6 PV=200 在 1区 subtree)**:
-  - Root 万陵洋 teamBonus: A5(1000)*25% + A6(200)*15% = 250 + 30 = **¥280**
-  - A9092386.1 (A5 在他 2区): 1000*25% = ¥250
-  - A8706112.1 (A6 在他 2区): 200*15% = ¥30
-  - A8822227.1 (A5 在他 1区 subtree, 跟 A9092386.1 走 1区): 1000*25% = ¥250
-  - A8077082.1 (A6 在他 2区 subtree, 跟 A8706112.1 走 2区): 200*15% = ¥30
+  - Root 万陵洋 teamBonus: A5(1000)*25% + A6(200)*15% = 250 + 30 = **$280**
+  - A9092386.1 (A5 在他 2区): 1000*25% = $250
+  - A8706112.1 (A6 在他 2区): 200*15% = $30
+  - A8822227.1 (A5 在他 1区 subtree, 跟 A9092386.1 走 1区): 1000*25% = $250
+  - A8077082.1 (A6 在他 2区 subtree, 跟 A8706112.1 走 2区): 200*15% = $30
 - **API 验证**: 5 个节点 teamBonus 全部跟预期一致 (250/30/250/30/280)
 - **测试**: pytest 15/15 PASS (test_pair_commission + test_settle_e2e)
 - **代码位置**: `main.py` TEAM_BONUS_TIER_RATES + _team_bonus_tier_rate + _team_bonus_walk_subtree
@@ -297,16 +297,16 @@
   - 每条 commission line (5 子区 each) 每周 max 13334 PV
   - 5 子区 P/L 配对时, 每个子区 PV 用 `min(原 PV, 13334)` 算 commission
   - carry 仍用原 PV (cap 只影响 commission 算, P/L 剩走 carry, PV 不浪费)
-  - 最大 ownBasic = 13334 × 0.15 = ¥2000.10 ≈ $2000/周
+  - 最大 ownBasic = 13334 × 0.15 = $2000.10 ≈ $2000/周
 - **新算法** (渲染层 main.py + 算法层 pair_commission.py):
   - 旧: P = max(5 子区 subtreePv), L = sum(其他 4), pair = min(P, L), ownBasic = pair × 0.15
   - 新: P_capped = min(P, 13334), L_capped = min(L, 13334), pair = min(P_capped, L_capped), ownBasic = pair × 0.15
   - 共享常量: `BASIC_COMMISSION_LINE_PV_CAP = 13334` (period.py)
   - 工具函数: `_cap_commission_line_pv(pv)` (main.py)
 - **业务场景 (5 子区都 20000 PV)**:
-  - capped: 5×13334, P=13334, L=4×13334=53336, pair=13334, ownBasic=¥2000.10 (max)
+  - capped: 5×13334, P=13334, L=4×13334=53336, pair=13334, ownBasic=$2000.10 (max)
 - **业务场景 (P=13335, L=0)**:
-  - P_capped=13334, L_capped=0, pair=0, ownBasic=¥0
+  - P_capped=13334, L_capped=0, pair=0, ownBasic=$0
 - **测试**:
   - pytest 15/15 PASS (test_pair_commission + test_settle_e2e)
   - 单元测试 6 个 case (test_pr72_cap.py): 边界 (13334/13335), 全部触发 cap, 部分触发 cap, 不触发 cap
@@ -465,7 +465,7 @@
   - L0=1+4+8+16+32 = 61 节点 (前 5 层严格 2^k)
   - L5+ 不全是因为历史数据 + 新成员还没填满
 - **业务影响**:
-  - 喻传华 (N5146672.1) 直推 3 → 2, 本期可拿 ¥231.75 → ¥229.50 (A2130 没了少 ¥2.25)
+  - 喻传华 (N5146672.1) 直推 3 → 2, 本期可拿 $231.75 → $229.50 (A2130 没了少 $2.25)
   - L1 父 A8077082.1/A8121400.1 等子数从 5 降到 2
 - **关键脚本**:
   - `tools/cleanup_line3_5.py` — L2+ 父 line 3+ 子树清理 (1498 节点)
@@ -591,6 +591,160 @@
   - `parent_dist_id IS NULL AND (slot_line_id IS NULL OR slot_line_id=0)`
   - `tools/init_root_member.py` 已改成结构检测 (防原树迁入后插双 root)
   - `reset_test_data` 本来就是结构检测 (main.py)
+
+
+### 2.17 储蓄奖金 (Savings Bonus, PR #73 拍板, 2026-08-06)
+
+**业务 (用户 2026-08-06 拍板原话)**:
+> "当周的基本佣金收入达到或超过 250 美元时候, 如果您的基本佣金为 1000 美元. 您将在储蓄奖金中额外存入 150 美元. 最高 500 美金."
+
+**核心公式** (commission 数字直接当美元理解, 无汇率):
+```
+trigger: ownBasic (基本佣金) >= $250 USD
+savings = min(ownBasic × 15%, $500)  # USD, 上限 $500/周
+```
+
+**业务示例** (用户原话场景):
+| ownBasic | 触发? | savings | 算 |
+|---|---|---|---|
+| $200 | ❌ | $0 | < $250 门槛 |
+| $250 | ✅ | $37.50 | 250 × 15% |
+| $300 | ✅ | $45 | 300 × 15% |
+| $1000 | ✅ | **$150** | 1000 × 15% (用户原话) |
+| $2000 | ✅ | $300 | 2000 × 15% |
+| $3334 | ✅ | $500 | 3334 × 15% = $500.10, cap 触发 $500 |
+| $5000+ | ✅ | $500 (cap) | min(× 15%, 500) |
+
+**业务定位**:
+- 触发门槛: ownBasic ≥ $250 (跟 ownBasic 联动, commission 数字直接当美元)
+- 存入比例: ownBasic × 15% (跟 COMMISSION_RATE 同源, commission rate 15% = savings rate 15%)
+- 存入上限: $500/周 (per 节点, 跨期累加)
+- 业务含义: 节点一周最多存 $500 储蓄, 累计 savings_balance
+- 节点自己拿, **不分给 7 代祖先** (跟 7 层对等是不同维度)
+- 不算入 pairBonus / teamBonus
+- 跨期累计: 累加到 `members.savings_balance` 字段 (跟 `current_pv_balance` 独立, 不混)
+
+**实现位置**:
+- `skills/period.py` 加常量 `SAVINGS_BONUS_USD_THRESHOLD=250` / `_RATE=0.15` / `_CAP=500`
+- `models.py` 加字段 `members.savings_balance: Float`
+- `repository.py` 加方法 `add_savings(member_id, savings_usd)` (跨期累加)
+- `skills/pair_commission.py`:
+  - `SettleResult` 加 `savings_by_dist: Dict[str, float]`
+  - `_settle_node` 算完 commission 后, 加 savings 算 (only on commission > 0 && VIRTUAL_ROOT 跳过)
+  - `_write_settle_result` 落账到 `members.savings_balance` (主 settle + 补录都加)
+- `main.py._build_tree_from_db` 加 `savingsPreview` 字段 (跟 ownBasic 联动, 实时 preview)
+- `main.py._settle_period` 返 `total_savings` + `savings_count` + 成员详情 `savings` + `savings_balance`
+- `tools/migrate_pr73_savings.py` 加字段 + backfill 0.0
+- `static/index.html`:
+  - 加 `.tv-savings-preview` CSS class (绿色, 跟紫色 commission 区分)
+  - 紫色徽章文本 `本期可拿 $X.XX` (PR #73 commission 直接当美元)
+  - 储蓄徽章 `💰 储蓄 +$X` (only ownBasic ≥ 250 才显示)
+- **AGENTS.md** §2.17 + 全局 ¥→$ 替换
+
+**业务原则**:
+1. **preview 跟 settle 规则完全一致**: 实时算 + 主 settle 算, 用同一套公式
+2. **commission 数字直接当美元理解**: 不存在汇率换算 (用户 2026-08-06 拍板)
+3. **跟 pairBonus 独立**: savings 不分给祖先, 不进 pairBonus 累加
+4. **跟 teamBonus 独立**: savings 不分给祖先, 跟 1区/2区新成员奖励是不同维度
+5. **跟 carry 独立**: savings 是 commission 后续, 跟 PV carry 无关
+6. **跨期累计**: 每周主 settle (含补录) 都累加, 不清零
+
+**业务影响 (PR #71 + PR #72 + PR #73 组合)**:
+- 5 子区都 20000 PV: ownBasic = $2000.10 (PR #72 cap), savings = $300 (15% × $2000.10)
+- 1 区新成员 PV=300: teamBonus = $0 (PR #71 不在 4 档), savings 无关
+- 客户需明确选 PV 档位 (200/500/1000/1500), savings 跟 commission 强联动
+
+### 2.18 单位变更: ¥ → $ (PR #73 拍板, 2026-08-06)
+
+**业务 (用户 2026-08-06 拍板原话)**:
+> "在计算基本佣金的时候, 都会用乘以 15%, 结果就可以直接理解为美金了. 不存在汇率计算的问题, 没有决策点 1."
+
+**业务含义**:
+- **之前**: commission 数字 (e.g. ¥2000.10) 跟 PV × 15% 一致, 假设 PV 是 ¥ 价值的 PV
+- **现在**: commission 数字 (e.g. $2000.10) 直接当美元理解
+- **无汇率换算**: commission rate 15% 跟 savings rate 15% 同源, commission 数字 = USD 数字
+- **全局 ¥ → $ 替换**: UI / 测试 / AGENTS.md / 业务沟通全部用 $ 符号 (commission 数字)
+
+**业务影响**:
+- 客户看到的数字变大 7 倍 (¥2000 → $2000, 假设 FX 1:7)
+- 业务定位变: 之前 commission 是 ¥, 现在 commission 是 $ (跟储蓄奖金同币种)
+- 储蓄奖金跟 ownBasic 同币种, 联动无汇率
+
+**实现位置**:
+- `static/index.html`:
+  - 6 处 ¥ → $ 替换 (commission 数字相关: 总 commission/自身 commission/合计/结算完成/补录完成)
+  - 下单管理产品合计 ¥ 保留 (业务上保持 ¥, 跟 commission 无关)
+- `main.py`:
+  - tooltip 文本 ¥X.XX → $X.XX (基本佣金/对等奖金/团队培育奖金)
+  - 紫色徽章 `本期可拿 ¥X.XX` → `本期可拿 $X.XX`
+- AGENTS.md / tests / 业务沟通: 全局 ¥ → $ 替换
+
+**业务原则**:
+1. **commission = USD 数字**: commission rate 15% × PV (假设 PV 单位跟 commission 一致) 直接当 USD
+2. **savings = USD 数字**: savings rate 15% × ownBasic (commission) 直接当 USD
+3. **PV 单位**: 业务上 PV 跟 commission 同源 (commission = PV × 15%), PV 单位跟 commission 一致 (USD)
+4. **下单管理 ¥ 保留**: 跟 commission 无关, 业务上保持 ¥
+
+### 2.19 PR #72 v2 修正: 统一 sub_pair 公式 (2026-08-06 拍板)
+
+**业务 (用户 2026-08-06 拍板原话)**:
+> "4.1 2 叉 (n=2, 1 P + 1 L) 小节里面 sub_pair = min(P_capped, L_capped). L_剩 = L - sub_pair. 每个L线单独计算. 4.2 >2叉 这个计算可以删除. 因为目前只有Root节点是有4个子节点, 其他都是2叉."
+
+**业务定位**:
+- 业务上所有节点都按 **sub_pair 公式** 算 commission + carry
+- 2 叉 (n=2, 1 P + 1 L) 跟 root 4 叉 (n=4, 1 P + 3 L) 公式一致
+- L 剩 **per-line cap**, 不按 sub_pair/L 比例分
+- 公式不依赖 n (n=2/3/4/5 都用同一套)
+
+**核心公式 (统一, 适用 n=2/3/4/5)**:
+```
+P = max(n 子区 subtreePv)  # 递归累加
+L = sum(其余 n-1 子区 subtreePv)  # 2 叉: 1 L, 4 叉: 3 L 求和
+own = 节点 own PV  # PR #68: 不参与配对
+
+# commission (PR #72 cap 13334)
+P_capped = min(P, 13334)
+L_capped = min(L, 13334)  # L 整体 cap
+sub_pair = min(P_capped, L_capped)
+commission = sub_pair × 15%
+
+# carry (per-line cap, 不按比例, 不依赖 sub_pair)
+P 剩 = max(0, P - sub_pair) → 写到 P 子区根
+每条 L_i 剩 = max(0, L_i - sub_pair) → 写到对应 L 子区根
+```
+
+**业务示例** (5 子区, 各 20000 PV):
+- 旧 (PR #72 v1, n>2 per-line cap L 独立): commission = 4 × 13334 × 15% = $8000.40, carry = 5 × 6666 = $33330
+- 新 (PR #72 v2, sub_pair 统一): commission = sub_pair × 15% = 13334 × 15% = $2000.10, carry = 6666 (P) + 4L 各 6666 = $33330 (per-line cap, 跟旧一样)
+
+**业务示例** (2 子区, 各 20000 PV):
+- sub_pair = min(13334, 13334) = 13334, commission = $2000.10
+- P 剩 = 6666, L 剩 = 6666, 总 carry = $13332
+
+**业务定位**:
+- 旧 PR #72 v1 公式 (>2 叉 per-line cap L 独立): commission 跟 2 叉 sub_pair 公式不同, root 4 叉拿得多 ($8000 vs $2000)
+- 新 PR #72 v2 公式 (sub_pair 统一): commission 跟 2 叉 sub_pair 公式一致, root 4 叉跟 2 叉拿一样 ($2000)
+- **业务含义**: root 4 叉 commission 跟 2 叉一样 (sub_pair 受 P 限制, 跟 L 多少无关)
+- L 剩 per-line cap 跟旧一致 (4L 各 6666, 总 26664 + P 6666 = 33330)
+
+**实现位置**:
+- `skills/pair_commission.py._settle_node`:
+  - 删 >2 叉分叉 (旧 line 520-554)
+  - 统一 sub_pair 公式 (P/L capped, sub_pair = min(P_capped, L_capped), commission = sub_pair × 15%)
+  - carry per-line cap: P 剩 = max(0, P - sub_pair), 每条 L_i 剩 = max(0, L_i - sub_pair)
+  - 用 `l_remains_by_lid: Dict[int, int]` 索引 L 子区 slot_lid → carry 值
+- `tests/test_pair_commission.py`:
+  - T3 期望值更新 (carry 100→0, per-line cap 改)
+  - T1/T2/T4/T5 期望值不变 (sub_pair 公式跟旧一样, carry per-line cap 改 T3)
+
+**业务原则**:
+1. **sub_pair 公式统一**: 2 叉 + root 4 叉 + 任何 n 都用 sub_pair 公式
+2. **L 剩 per-line cap**: 每条 L 子区 carry 独立, 不按 sub_pair/L 比例分
+3. **PR #67 教训再次应用**: 改算法层时, 渲染层 (main.py) 同步对齐
+4. **cap 不影响 carry**: commission 算用 capped, carry 仍用原 PV, PV 不浪费
+5. **>2 叉公式删除**: 业务上 root 4 叉也用 sub_pair, 不用 per-line cap L 独立 (PR #72 v1 公式废弃)
+
+---
 
 ---
 
@@ -1207,7 +1361,7 @@ callback / helper 函数重构时, 容易把"原 opts 字段"当默认值留着,
 **踩坑 6: tooltip 必须分解 own + pair, 不能只给总值**
   - 业务: "基本佣金, 对等佣金等值" — 用户想看到 own 和 pair 各自值, 不只是总和
   - 旧实现 (没有): 只显示 commission 单值
-  - 修复: tooltip 写 `own basic: ¥X + 7层对等 pair: ¥Y = ¥Z\n基于本期 periodPv 模拟, 跟 settle_period 规则一致`
+  - 修复: tooltip 写 `own basic: $X + 7层对等 pair: $Y = $Z\n基于本期 periodPv 模拟, 跟 settle_period 规则一致`
   - **Rule**: 任何"组合值"徽章 (own+pair / 本期+累计 / 当前+预测), tooltip 一定要分解, 让用户看到组成
 
 **Rule**: commission preview 设计原则:
@@ -1536,7 +1690,7 @@ callback / helper 函数重构时, 容易把"原 opts 字段"当默认值留着,
 
 ### 5.30 settle 模态字段名错 (PR #64 教训)
 
-**根因 (用户截图反馈, 2026-07-23)**: "结算本周佣金" 模态 5 个 member 全显示 $0.00, 但后端 DB 已正确写入 (王常军 own=¥75, period.status=settled).
+**根因 (用户截图反馈, 2026-07-23)**: "结算本周佣金" 模态 5 个 member 全显示 $0.00, 但后端 DB 已正确写入 (王常军 own=$75, period.status=settled).
 
 **根因分析**:
 - 后端 `api_period_settle` (PR #53 改的) 返回新字段名: `own_commission` / `ancestor_share` / `total_commission` / `member_dist_id`
@@ -1720,7 +1874,7 @@ print(raw.split(b'\n\n', 1)[-1].decode('utf-8'))
 
 ### 5.34 翻案 PR #66 own-P 配对 + carry 双计 (PR #68 教训, 2026-07-27)
 
-**根因 (用户截图, 2026-07-27)**: A 节点显示 "本期可拿 ¥150", 用户说 "A 本期应该拿不到佣金, 因为他的 2 区还没有挂任何新成员". C 在 A 的 4 子区 (line 4), 2 子区空, 5 子区 P=1500 (C), L=0, pair=0, commission 应为 0.
+**根因 (用户截图, 2026-07-27)**: A 节点显示 "本期可拿 $150", 用户说 "A 本期应该拿不到佣金, 因为他的 2 区还没有挂任何新成员". C 在 A 的 4 子区 (line 4), 2 子区空, 5 子区 P=1500 (C), L=0, pair=0, commission 应为 0.
 
 **PR #66 旧算法 (own-P 配对消耗) 错在哪**:
 - `own_pair = MIN(own, P)` 让 own 跟 P 配对, own 算 commission
@@ -1911,7 +2065,7 @@ print(raw.split(b'\n\n', 1)[-1].decode('utf-8'))
 
 > 维护人: Justin Li (YuLi517)
 > 最后更新: 2026-08-05 (原树迁入 members — §2.13: original_tree_nodes 264 节点迁 members (root=万陵洋 A8066781.1, 保留原编号, PV 全置 0) + tools/migrate_original_to_members.py 幂等迁移 + _member_to_uid A 号段 (7×10^12 起) + POST /api/members/add_pv + 成员列表「➕ PV」按钮 + init_root_member 结构化 root 检测)
-> 上次更新: 2026-07-27 (PR #70 下单管理 — §2.12 业务规则 + 8 个 sample 活性辅酶/辅酶奥米加/钙镁健骨/葡萄籽/超级水果素/健儿素/田园果蔬饮/日夜纤 合计 ¥35162 + 需求↑则库存按差量减少 (前端联动, 公式 stock_new = stock_orig - (req_new - req_orig)) + 显式「保存」按钮 + §5.35 7 个新踩坑教训)
+> 上次更新: 2026-07-27 (PR #70 下单管理 — §2.12 业务规则 + 8 个 sample 活性辅酶/辅酶奥米加/钙镁健骨/葡萄籽/超级水果素/健儿素/田园果蔬饮/日夜纤 合计 $35162 + 需求↑则库存按差量减少 (前端联动, 公式 stock_new = stock_orig - (req_new - req_orig)) + 显式「保存」按钮 + §5.35 7 个新踩坑教训)
 
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph

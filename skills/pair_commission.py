@@ -45,6 +45,7 @@ from repository import (
 from skills.period import (
     COMMISSION_RATE, PAIRING_BONUS_RATIOS, PAIRING_BONUS_MAX_DEPTH,
     BASIC_COMMISSION_LINE_PV_CAP,
+    SAVINGS_BONUS_USD_THRESHOLD, SAVINGS_BONUS_USD_RATE, SAVINGS_BONUS_USD_CAP,
     get_period_range,
 )
 
@@ -88,6 +89,11 @@ class SettleResult:
     ancestor_share_by_dist: Dict[str, float] = field(default_factory=dict)
     # 配对详情 (调试 / 审计用)
     pairs_log: List[dict] = field(default_factory=list)
+    # ★ 2026-08-06 PR #73: 储蓄奖金 (美元, 跟 ownBasic 联动)
+    #   - ownBasic ≥ 250 USD 时, savings = min(ownBasic × 15%, 500)
+    #   - 节点自己拿, 不分给祖先
+    #   - 跨期累计到 members.savings_balance
+    savings_by_dist: Dict[str, float] = field(default_factory=dict)
 
 
 # ============== 入口 ==============
@@ -443,59 +449,64 @@ def _settle_node(node: SlotNode, result: SettleResult) -> Tuple[float, int]:
         existing = result.carry_out_by_dist.get(node.member_dist_id, 0)
         result.carry_out_by_dist[node.member_dist_id] = int(existing) + int(own_pv)
 
-    # ★ officev2 5 叉 P vs L: 1 个最强 P (1 个子区) + 4 个其他 L (最多 4 个子区)
+    # ★ officev2 n 叉 P vs L: 1 个最强 P + (n-1) 个 L (n = 子区数, n=2 是 2 叉, n>2 是 4 叉/5 叉)
     #   多个相等 max_pv 时, 取 1 个当 P, 其余算 L
     sorted_by_pv_desc = sorted(sub_pvs, key=lambda x: -x[1])
+    n_lines = len(sorted_by_pv_desc)
     p_slot_lid, p_pv = sorted_by_pv_desc[0]  # P 子区 PV (= max, 原始未 cap)
-    l_pvs = [p for _, p in sorted_by_pv_desc[1:5]]  # L 4 子区 PV (原始未 cap)
+    l_pvs = [p for _, p in sorted_by_pv_desc[1:5]]  # L (n-1) 子区 PV (原始未 cap, max 4 L)
     sum_rest = sum(l_pvs)
 
-    # 3. ★ PR #68: 5 子区 P/L 配对 (own 不参与)
+    # 3. ★ PR #68: n 子区 P/L 配对 (own 不参与)
     #   旧 (PR #66): own_pair = MIN(own, P) 参与配对
-    #   新 (PR #68): own 不参与, commission = 5 子区 P/L 配对 pair × 15%
-    # ★ PR #72 (2026-08-06): 每条 commission line 每周 max 13334 PV
-    #   业务: "每条佣金线每周最大值是13334PV, 超过按 13334 算, 约合 2000 美金"
-    #   - P/L 配对时, 每个子区 PV 用 min(原 PV, 13334) 算 commission
-    #   - carry 仍用原 PV (cap 只影响 commission 算, P/L 剩走 carry)
-    #   - 最大 ownBasic = 13334 * 0.15 = ¥2000.10 ≈ $2000/周
+    #   新 (PR #68): own 不参与, commission = n 子区 P/L 配对 pair × 15%
+    # ★ PR #72 v2 (2026-08-06 用户拍板): 统一 sub_pair 公式适用所有节点 (2 叉 + root 4 叉)
+    #   旧 PR #72 v1: 分 2 叉 vs >2 叉 (>2 走 per-line cap L 独立)
+    #   新 PR #72 v2: 所有节点按 sub_pair 公式, L 剩 per-line cap (跟 >2 叉一样)
+    #   业务: "目前只有 Root 节点是有 4 个子节点, 其他都是 2 叉"
+    #   业务示例 (5 子区, 各 20000 PV):
+    #     - 旧 (>2 叉 L-lines): commission = 4 × 13334 × 15% = 8000.40, carry = 5 × 6666 = 33330
+    #     - 新 (sub_pair 统一): sub_pair = min(13334, 4×13334) = 13334, commission = 2000.10
+    #       carry: P 剩 = 6666, 4L 各 max(0, 20000-13334) = 6666, 总 33330 (per-line cap)
+    #   业务示例 (2 子区, 各 20000 PV):
+    #     - sub_pair = min(13334, 13334) = 13334, commission = 2000.10
+    #       carry: P 剩 = 6666, L 剩 = 6666, 总 13332
+    # ★★ 核心公式 (sub_pair + per-line cap carry):
+    #   P = max(n 子区 subtreePv)
+    #   L = sum(其余 n-1 子区 subtreePv)
+    #   P_capped = min(P, 13334)
+    #   L_capped = min(L, 13334)  # L 整体 cap
+    #   sub_pair = min(P_capped, L_capped)
+    #   commission = sub_pair × 15%
+    #   carry: P 剩 = max(0, P - sub_pair)
+    #          L_i 剩 = max(0, L_i - sub_pair)  # per-line, 不按 sub_pair/L 比例分
     p_pv_capped = min(p_pv, BASIC_COMMISSION_LINE_PV_CAP)
     l_pvs_capped = [min(p, BASIC_COMMISSION_LINE_PV_CAP) for p in l_pvs]
-    sum_rest_capped = sum(l_pvs_capped)
-    sub_pair = min(p_pv_capped, sum_rest_capped)
+    l_sum_capped = sum(l_pvs_capped)
+    sub_pair = min(p_pv_capped, l_sum_capped)
     node_commission = sub_pair * COMMISSION_RATE
-
-    # ★ 跳过虚拟根 sentinel (PR #53), 真实根直接进 commission_by_dist
+    # 跳过虚拟根 sentinel (PR #53), 真实根直接进 commission_by_dist
     if node.dist_id and node.dist_id != "__VIRTUAL_ROOT__":
         result.commission_by_dist[node.dist_id] = node_commission
-
-    # 4. carry 算法:
-    #    own (100%) → 节点自己 carry (上面已写)
-    #    P 剩 (p_pv - sub_pair) → P 子区根 carry (子节点, ADD 模式)
-    #    L 剩 (各 L × (1 - sub_pair/L)) → L 子区根 carry (子节点, ADD 模式)
-    p_remain = p_pv - sub_pair
-    if sum_rest > 0 and sub_pair > 0:
-        consumed_ratio = sub_pair / sum_rest
-    else:
-        consumed_ratio = 0
-
-    # 5. 写每个子槽位的 carry (ADD 模式, 累加到子节点已有的 own carry 上)
+    # carry: per-line cap (跟 >2 叉旧公式一致, 不按 sub_pair 比例分)
+    p_remain = max(0, p_pv - sub_pair)
+    l_remains_by_lid: Dict[int, int] = {}
+    for slot_lid, l_pv in [(slid, pv) for slid, pv in sorted_by_pv_desc[1:5]]:
+        l_remains_by_lid[slot_lid] = max(0, l_pv - sub_pair)
     for slot_lid, c, _c_comm, c_pv_total in child_results:
         if c is None or c.member_dist_id is None:
             continue
         if slot_lid == p_slot_lid:
-            # P 子区: 剩 = p_remain
             this_carry = p_remain
+        elif slot_lid in l_remains_by_lid:
+            this_carry = l_remains_by_lid[slot_lid]
         else:
-            # L 子区: 剩 = c_pv_total × (1 - consumed_ratio)
-            this_carry = c_pv_total * (1 - consumed_ratio)
+            this_carry = 0
         existing_child = result.carry_out_by_dist.get(c.member_dist_id, 0)
         result.carry_out_by_dist[c.member_dist_id] = int(existing_child) + int(this_carry)
-
-    # 7. 累计统计
+    # 累计统计 (sub_pair 公式)
     result.total_commission += node_commission
     result.total_pv_consumed += int(sub_pair)
-
-    # 记录配对日志
     result.pairs_log.append({
         "node_dist_id": node.dist_id,
         "max_pv": p_pv,
@@ -505,16 +516,21 @@ def _settle_node(node: SlotNode, result: SettleResult) -> Tuple[float, int]:
         "carry_p": int(p_remain),
         "own_carry": int(own_pv),
     })
+    # 6. ★ PR #66: 本节点"子区总 PV" = own + sum(子节点 c_pv_total) (递归累加)
+    subtree_pv_total = int(own_pv) + sum(int(c_pv) for _, _, _, c_pv in child_results)
 
-    # 8. ★ PR #66: 本节点"子区总 PV" = own + sum(子节点 c_pv_total) (递归累加)
-    #    给父节点当 sub_pvs 用, 让父算 own 时能正确看到本子树的 PV
-    #    旧 (PR #58): return max_pv, 只看 1 层 (直接子 max) — 父节点少算子孙 PV
-    #    PR #66: 改为递归累加, 兼容 PR #68 (own 不参与配对, 但子区总 PV 仍递归)
-    _sum_sub = own_pv
-    for _slot_lid, _c, _c_comm, _c_pv in child_results:
-        if _c is not None and _c_pv > 0:
-            _sum_sub += _c_pv
-    return node_commission, _sum_sub
+    # ★★★ 2026-08-06 PR #73: 储蓄奖金 (Savings Bonus, 美元)
+    #   业务: ownBasic ≥ $250 时, savings = min(ownBasic × 15%, $500)
+    #   跟 ownBasic 同源 (commission 数字直接当美元理解, 无汇率)
+    #   节点自己拿, 不分给祖先
+    #   触发: only on 真实 root / 真实非虚拟成员 (commission_by_dist 写过的 dist_id)
+    if node_commission > 0 and node.dist_id and node.dist_id != "__VIRTUAL_ROOT__":
+        own_basic_usd = float(node_commission)  # commission 数字直接当美元
+        if own_basic_usd >= SAVINGS_BONUS_USD_THRESHOLD:
+            savings = min(own_basic_usd * SAVINGS_BONUS_USD_RATE, SAVINGS_BONUS_USD_CAP)
+            result.savings_by_dist[node.dist_id] = round(savings, 4)
+
+    return node_commission, subtree_pv_total
 
 
 # ============== Pairing Bonus 7 代分润 ==============
@@ -634,6 +650,13 @@ def _write_settle_result(
             m = member_repo.get_by_dist_id(dist_id)
             if m:
                 member_repo.add_commission(m.id, share)
+    # ★ 2026-08-06 PR #73: 储蓄奖金落账 (主 settle + 补录都加, 跟 ownBasic 同步算)
+    #   业务: ownBasic ≥ $250 时, savings = min(ownBasic × 15%, $500) 累加
+    #   跨期累计到 members.savings_balance
+    for dist_id, savings_usd in result.savings_by_dist.items():
+        m = member_repo.get_by_dist_id(dist_id)
+        if m:
+            member_repo.add_savings(m.id, savings_usd)
 
     # 4. 标 period 状态
     total_carried = sum(result.carry_out_by_dist.values())

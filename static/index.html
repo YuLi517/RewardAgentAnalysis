@@ -2651,6 +2651,21 @@
     cursor: help;          /* 暗示有 tooltip */
     border: 1px solid #C4B5FD;  /* 紫色边框, 强化"预览"语义 */
   }
+  /* ★ 2026-08-06 PR #73: 储蓄奖金徽章 (绿色, 区分 commission preview 紫色)
+     业务: ownBasic ≥ $250 时, savings = min(ownBasic × 15%, $500)
+     视觉: 绿色暗示"积累/资产", 跟 commission "可拿" 区分
+  */
+  .tree-view .tv-savings-preview {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: #166534;        /* 深绿 — 储蓄主色 */
+    font-weight: 600;
+    background: #DCFCE7;   /* 浅绿背景 */
+    padding: 2px 6px;
+    border-radius: 3px;
+    cursor: help;
+    border: 1px solid #86EFAC;  /* 绿色边框 */
+  }
   /* ★ 2026-07-21 PR #60/#61: PV stepper wrapper (input + +/- 按钮 跳 100)
      业务: 用户想要 spinner 按钮 (每次 100 整数倍), 同时能手动输入任意整数
      设计: input + 2 按钮 (上下叠, 右侧内嵌), 灰色按钮跟 input 视觉一致
@@ -6820,7 +6835,7 @@ function renderBillHtml(bill, phase) {
     <div style="display:flex;gap:16px;align-items:center;margin-bottom:12px;padding:8px 12px;background:#F9FAFB;border-radius:6px;font-size:13px;">
       <div><b>${escapeHtml(period.id || '?')}</b></div>
       <div style="color:${statusColor};font-weight:600;">${statusText}</div>
-      <div style="color:#6B7280;">总 commission: <b style="color:#16A34A;">¥${(period.total_commission || 0).toFixed(2)}</b></div>
+      <div style="color:#6B7280;">总 commission: <b style="color:#16A34A;">$${(period.total_commission || 0).toFixed(2)}</b></div>
       <div style="color:#6B7280;">消耗 PV: <b>${period.total_pv_consumed || 0}</b></div>
       <div style="color:#6B7280;">Carry: <b>${period.total_pv_carried || 0}</b></div>
     </div>
@@ -6839,9 +6854,9 @@ function renderBillHtml(bill, phase) {
       <td style="font-size:11px;color:#6B7280;">${escapeHtml(m.member_dist_id || '?')}</td>
       <td style="text-align:center;color:#6B7280;">${escapeHtml(m.role || 'consumer')}</td>
       <td class="num" style="color:#6B7280;">${periodPv}</td>
-      <td class="num">¥${own.toFixed(2)}</td>
-      <td class="num">¥${ancestor.toFixed(2)}</td>
-      <td class="num"><b>¥${total.toFixed(2)}</b></td>
+      <td class="num">$${own.toFixed(2)}</td>
+      <td class="num">$${ancestor.toFixed(2)}</td>
+      <td class="num"><b>$${total.toFixed(2)}</b></td>
       <td class="num" style="color:#D97706;">${carryOut}</td>
     </tr>`;
   }).join('');
@@ -6900,7 +6915,7 @@ function bindBillButtons(modal) {
         modal._bill = null;
         await refreshBillBody(modal);
         bindBillButtons(modal);
-        showMsg('qaMsg', `✓ 结算完成 — 总 commission ¥${(data.total_commission || 0).toFixed(2)}, 消耗 PV ${data.total_pv_consumed || 0}`, 'ok');
+        showMsg('qaMsg', `✓ 结算完成 — 总 commission $${(data.total_commission || 0).toFixed(2)}, 消耗 PV ${data.total_pv_consumed || 0}`, 'ok');
         // 刷新 tree view (让 commission 徽章更新)
         if (typeof refreshTreeAfterSettle === 'function') {
           refreshTreeAfterSettle();
@@ -6943,7 +6958,7 @@ function bindBillButtons(modal) {
         modal._bill = null;
         await refreshBillBody(modal);
         bindBillButtons(modal);
-        showMsg('qaMsg', `✓ 补录完成 — commission ¥${(data.total_commission || 0).toFixed(2)}, count ${data.member_count || 0}`, 'ok');
+        showMsg('qaMsg', `✓ 补录完成 — commission $${(data.total_commission || 0).toFixed(2)}, count ${data.member_count || 0}`, 'ok');
       } catch (e) {
         showMsg('qaMsg', '✗ ' + e.message, 'err');
         suppBtn.disabled = false;

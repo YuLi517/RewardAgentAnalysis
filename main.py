@@ -974,6 +974,13 @@ async def lifespan(app: FastAPI):
     # 初始化数据库（创建表 + 索引）
     init_db()
 
+    # P1.6 §4.2: 预热所有 scenarios (后台 thread, 不阻塞 startup)
+    # 注: 1 个 scenario 算 15 月 × ~10ms = 150ms, 全部 scenarios 后台跑
+    # 传 SessionLocal (sessionmaker) 而非 session, 避免父进程 close 跟后台 thread race
+    from scenario.warmer import warm_all_scenarios
+    from database import SessionLocal
+    warm_all_scenarios(SessionLocal, total_months=14)
+
     log.info("=" * 60)
     log.info("🚀 RewardAgentAnalysis Stage 3 启动（SQLite 持久化已启用 · RAG 知识库已下线）")
     log.info(f"   路由链（按优先级）: {' → '.join(p.config.name for p in providers)}")
@@ -4982,3 +4989,9 @@ def api_member_add_pv(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host=settings.host, port=settings.port, reload=False)
+
+# ★ 2026-08-07 P1 PR3 Task 4: 接入 scenario_routes 3 个 HTTP 路由
+#   - 业务: 客户路演实时调参, 调 POST /api/scenarios 建场景, GET state/overview 查报酬
+#   - 不改 main.py 其他代码, 只加 include_router
+import scenario_routes  # noqa: E402
+app.include_router(scenario_routes.router)

@@ -54,7 +54,12 @@ nohup.out
 # ---------- 一次性 debug 产物 ----------
 # 任何以 _ 开头的临时文件 / 目录: 调试脚本 / 测试 HTML / 抓包日志 / playwright args 等
 # 真正的代码文件没有以 _ 开头的(都用驼峰或下划线)
+# 例外 (PR1 scenario/ 包的内部模块, _ 前缀是 Python 约定, 不是临时产物):
+#   __init__.py  (包标记)
+#   _pv.py       (scenario 内部 PV 计算, 用户可见)
 _*
+!__init__.py
+!scenario/_pv.py
 # outputs/ 下的临时生成物:tree 预览、debug css 等(demo 快照 / 取样 HTML / debug 渲染,程序可重生成)
 #   ignore 目录下所有文件但保留 .gitkeep 占位
 outputs/*

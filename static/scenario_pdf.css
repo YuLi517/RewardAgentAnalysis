@@ -1,0 +1,345 @@
+/* === P5 scenario_pdf.css === */
+/* 复 P3 PR1 配色: bg #0a0a14 / line #5AA4AE (天水碧) / region2 #C0EBD7 (青白) /
+   region3 #F0C239 (缃色) / text #758A99 (墨灰) / card #1a1a2e / #2a2a3e */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #0f0f1e;
+  color: #D6ECF0;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.pdf-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.pdf-title {
+  color: #5AA4AE;
+  font-size: 18px;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.pdf-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+}
+
+.pdf-sidebar, .pdf-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* === 侧栏 (复 PR3 风格) === */
+.pdf-sidebar {
+  background: #1a1a2e;
+  border-radius: 8px;
+  padding: 12px;
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+.pdf-sidebar h3 {
+  color: #5AA4AE;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.pdf-sidebar-list {
+  max-height: 360px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #2a2a3e;
+  padding-bottom: 8px;
+}
+.pdf-sidebar-item {
+  display: block;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #D6ECF0;
+  border-left: 3px solid transparent;
+  margin-bottom: 2px;
+  transition: background 0.15s;
+}
+.pdf-sidebar-item:hover { background: #2a2a3e; }
+.pdf-sidebar-item.active {
+  background: #3a3a4e;
+  border-left: 3px solid #5AA4AE;
+}
+.pdf-sidebar-item .meta {
+  display: block;
+  font-size: 10px;
+  color: #758A99;
+  margin-top: 2px;
+}
+.pdf-sidebar-hint {
+  font-size: 10px;
+  color: #758A99;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+/* === 生成 PDF 按钮 (主色渐变) === */
+.btn-generate-pdf {
+  background: linear-gradient(135deg, #5AA4AE, #C0EBD7);
+  color: #0a0a14;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  letter-spacing: 0.5px;
+  transition: filter 0.15s, opacity 0.15s;
+}
+.btn-generate-pdf:hover { filter: brightness(1.1); }
+.btn-generate-pdf:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* === 9 section 容器 (PDF 用白底) === */
+.pdf-section {
+  background: #ffffff;
+  color: #1A1A1A;
+  padding: 24px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  page-break-after: always;
+  break-after: page;
+}
+.pdf-section:last-child { margin-bottom: 0; }
+.pdf-section h2 {
+  color: #5AA4AE;
+  font-size: 18px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid #5AA4AE;
+  padding-bottom: 6px;
+}
+.pdf-section .section-content {
+  font-size: 13px;
+  color: #333333;
+  line-height: 1.6;
+}
+.pdf-section .section-content p { margin-bottom: 8px; }
+
+/* === Section 1: 封面 === */
+.cover-body {
+  text-align: center;
+  padding: 32px 16px;
+  background: linear-gradient(180deg, #F7FCFC 0%, #FFFFFF 100%);
+  border-radius: 8px;
+  border: 2px dashed #5AA4AE;
+}
+.cover-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #5AA4AE;
+  margin-bottom: 12px;
+}
+.cover-meta {
+  font-size: 14px;
+  color: #758A99;
+  margin-bottom: 24px;
+}
+.cover-contact {
+  font-size: 14px;
+  color: #1A1A1A;
+  margin-top: 32px;
+}
+
+/* === Section 2 + Section 8: 8 卡片 === */
+.pdf-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 8px 0;
+}
+.pdf-card {
+  background: #F7FCFC;
+  border: 1px solid #D6ECF0;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.pdf-card .label {
+  font-size: 11px;
+  color: #758A99;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.pdf-card .val {
+  font-size: 14px;
+  color: #F0C239;
+  font-family: "Consolas", monospace;
+  font-weight: 600;
+  margin-top: 4px;
+}
+.pdf-card-highlight {
+  background: #2a3a3e;
+  border-color: #C0EBD7;
+}
+.pdf-card-highlight .val { color: #5AA4AE; }
+.pdf-cards-top5 {
+  margin-top: 12px;
+}
+
+.summary-avg {
+  font-size: 13px;
+  color: #1A1A1A;
+  margin-top: 8px;
+}
+.summary-avg span {
+  color: #C0EBD7;
+  font-family: "Consolas", monospace;
+  font-weight: 600;
+}
+.summary-glossary {
+  font-size: 11px;
+  color: #758A99;
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* === Canvas 容器 === */
+.canvas-wrap {
+  background: #0a0a14;
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+}
+.pdf-section canvas {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #D6ECF0;
+  display: block;
+  margin: 0 auto;
+}
+.canvas-hint {
+  font-size: 11px;
+  color: #758A99;
+  margin-top: 6px;
+  text-align: center;
+}
+
+/* === Section 4: 4 border-beam 参数 (复 PR1 风格) === */
+.pdf-params {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.beam-wrap {
+  position: relative;
+  padding: 1px;
+  border-radius: 12px;
+  background: #1a1a2e;
+  overflow: visible;
+}
+.beam-wrap::before, .beam-wrap::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 12px;
+  pointer-events: none;
+}
+.beam-wrap::before {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #5AA4AE 60deg,
+    #758A99 120deg,
+    transparent 180deg,
+    transparent 360deg
+  );
+  animation: beam-rotate 3s linear infinite;
+  z-index: 1;
+}
+.beam-wrap::after {
+  background: rgba(90, 164, 174, 0.15);
+  filter: blur(8px);
+  z-index: 0;
+}
+@keyframes beam-rotate { to { transform: rotate(360deg); } }
+
+.beam-content {
+  position: relative;
+  background: #1a1a2e;
+  border-radius: 11px;
+  padding: 12px 16px;
+  z-index: 2;
+}
+.beam-content h3 {
+  color: #5AA4AE;
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.form-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 4px 0;
+  color: #758A99;
+}
+.form-row .val {
+  color: #F0C239;
+  font-family: "Consolas", monospace;
+}
+
+/* === Section 9: 风险免责 + 签字 === */
+.disclaimer-list {
+  margin: 0 0 16px 24px;
+  font-size: 12px;
+  color: #333333;
+  line-height: 1.7;
+}
+.disclaimer-list li { margin-bottom: 4px; }
+.sign-block {
+  margin-top: 16px;
+  border-top: 1px solid #D6ECF0;
+  padding-top: 12px;
+}
+.sign-block h3 {
+  color: #5AA4AE;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.sign-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #1A1A1A;
+  margin-bottom: 8px;
+  font-family: "Consolas", monospace;
+}
+.sign-date {
+  margin-left: 16px;
+  color: #758A99;
+}
+
+/* === Toast (复 PR1/PR3/PR4 风格) === */
+.pdf-toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.pdf-toast.error { background: #EF4444; color: #fff; }
+.pdf-toast.success { background: #5AA4AE; color: #fff; }
+.pdf-toast.info { background: #758A99; color: #fff; }

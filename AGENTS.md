@@ -2434,3 +2434,44 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 **后续 (P3 PR2/PR3)**:
 - PR2: 时间轴折线 + 月累计
 - PR3: 多 scenario 对比 + 导出 PNG/CSV
+
+
+### 6.6 P3 PR2 — 8 种报酬 × 14 月 热图 (scenario.html 下方 section)
+
+**业务**: 1 次画 8 种报酬 × 14 月累计热图, hover tooltip 0 延迟, click 详情 60s 1 次
+**完成日**: 2026-08-07 (本轮)
+**Commit**: 见 git log (Task 1-6 各 1 commit, Task 5 e2e 用 @skipif 兜底)
+**关键文件**:
+- `scenario_routes.py` — 新增 `GET /api/scenarios/{id}/overview/all?total_months=14` 端点
+- `tests/test_scenario_routes.py` — +1 测试 (test_get_overview_all_14_months)
+- `static/scenario.html` — 加 `<section id="heatmap">` 在 8 卡片下方
+- `static/scenario.js` — 加 `renderHeatmap` + `showHeatmapTooltip` + `showMonthDetail` + `bindHeatmapEvents`
+- `static/scenario.css` — 加 .p3-heatmap / .heatmap-container / .heatmap-tooltip / .month-detail 样式
+- `tests/test_scenario_ui_e2e.py` — +1 e2e 测试 (test_scenario_page_shows_heatmap_after_submit)
+
+**验收 (5+1=6 task 验证)**:
+- Task 1 后端: GET /overview/all 返 14 月 × 8 字段 = 112 值
+- Task 2 路由测试: 5 passed (4 PR1 + 1 PR2)
+- Task 3 前端 HTML+CSS: heatmap section + tooltip + month-detail modal
+- Task 4 前端 JS: Canvas 8 行 14 列 + 业务分色 + hover + click
+- Task 5 e2e: 1 测试 pass (用 max_level=2 跳过 14 分钟)
+- Task 6 AGENTS.md §6.6 状态记录
+
+**业务价值**:
+- 1 次看 14 月趋势, 不用 14 次点击切换
+- 业务分色突出"哪个报酬哪月增长最猛"
+- Hover 0 延迟, 路演时即点即看
+- Click 详情 60s 1 次, 业务接受 (跟 PR1 60s 一致)
+
+**性能**:
+- 1 GET 14 月 ≈ 14 分钟 (跟 PR1 60s 一致, 业务接受)
+- 后续 PR1.5 优化 (LRU cache + parallel compute) 时一并修
+- 实际 e2e 用 max_level=2 跳过, 3 月 ≈ 12s
+
+**业务分色 8 色 (跟 PR1 卡片一致)**:
+- ownBasic #5AA4AE / pairBonus #758A99 / teamBonus #F0C239 / savings #C0EBD7
+- leader #5AA4AE80 / horizontal #758A9980 / retail #C0EBD780 / total #5AA4AE
+
+**后续 (PR3 拍板)**:
+- 多 scenario 对比 (2-3 天)
+- 导出 PNG/CSV

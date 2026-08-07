@@ -1,13 +1,14 @@
 /* src/styles/scenario.css
- * v1.0.2: 适配 React + BorderBeam 组件
- * 关键: BorderBeam 自带光带, 不再用 conic-gradient 旧方案
- * 保留: input 样式 + 卡片样式 + canvas + heatmap + 内部 halo */
+ * v1.0.3: beam-content 改浅色, 让 BorderBeam 1.3 light theme (黑色 stroke 0.4) 真正显示
+ * 之前 (v1.0.2): 深紫蓝 #1a1a2e + light theme → 黑色 stroke 0.4 + blur 8px 几乎不可见
+ * 现在 (v1.0.3): 浅米色 #FAF7F0 + light theme → 黑色 stroke 0.4 + blur 8px 强对比, 光带清晰
+ * 保留: input 样式 (浅色版) + 卡片样式 + canvas + heatmap + 内部 halo */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
-  background: #0f0f1e;
+  background: #0f0f1e;  /* 整体深色, 让浅色 beam-content 突出 */
   color: #D6ECF0;
   min-height: 100vh;
   padding: 16px;
@@ -25,30 +26,32 @@ body {
   display: flex; flex-direction: column; gap: 12px;
 }
 
-/* === BorderBeam 包裹层样式 ===
-   BorderBeam 组件 render: <div class="beam-wrap"><...><div class="beam-content">...children...</div></div>
-   实际: BorderBeam 是个 wrapper, 内部 ::after / ::before 画光带, 我们控制 wrapper + content 视觉 */
+/* === BorderBeam 包裹层样式 (v1.0.3 浅色版) ===
+   关键: beam-wrap + beam-content 都改浅色, 让 BorderBeam light theme 的黑色 stroke + bloom 强对比显示
+   整体配色: 浅米色 + 黑色字 + 金棕数字 + 青色 accent, 跟深色 body 形成强对比 */
 .beam-wrap {
-  display: block;       /* BorderBeam 默认 inline-block, 改成 block 让 input 占满 */
+  display: block;
   position: relative;
   border-radius: 12px;
-  background: #1a1a2e;
+  background: #FAF7F0;       /* 浅米色 (v1.0.3 关键改动) */
   isolation: isolate;
-  overflow: visible !important;   /* BorderBeam 1.3 bloom 在 element 外, 不能 hidden */
+  overflow: visible !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);  /* 浅色卡片在深色 body 上需要轻微投影 */
 }
 .beam-content {
-  background: #1a1a2e;
+  background: #FAF7F0;       /* 浅米色 (跟 beam-wrap 同色, 让 BorderBeam 在背景上贴边) */
   border-radius: 12px;
   padding: 12px 16px;
   position: relative;
-  z-index: 1;            /* 在 BorderBeam 的光带层之上 */
+  z-index: 1;
 }
 .beam-content h3 {
-  color: #5AA4AE;
+  color: #2C3E50;            /* 深蓝灰 (跟浅色背景对比强) */
   font-size: 12px;
+  font-weight: 600;
   margin-bottom: 8px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
 }
 .form-row {
   display: flex;
@@ -56,17 +59,18 @@ body {
   align-items: center;
   font-size: 12px;
   padding: 4px 0;
-  color: #758A99;
+  color: #5C4A2F;            /* 金棕 label 文字 (跟浅米色背景协调) */
   gap: 8px;
 }
 .form-row .val-input {
-  background: rgba(90, 164, 174, 0.08);
-  border: 1px solid transparent;
+  background: #FFFFFF;       /* 纯白 input (跟浅米色卡片区分) */
+  border: 1px solid #D6D0C4; /* 米白边框 (跟卡片色微差) */
   border-radius: 4px;
   padding: 3px 8px;
-  color: #F0C239;
+  color: #9C5A1A;            /* 金棕数字 (跟 label 配套, 暗金调) */
   font-family: "Consolas", monospace;
   font-size: 12px;
+  font-weight: 600;
   text-align: right;
   width: 110px;
   outline: none;
@@ -79,19 +83,20 @@ body {
   -webkit-appearance: none; margin: 0;
 }
 .form-row .val-input:hover {
-  background: rgba(90, 164, 174, 0.15);
-  border-color: rgba(90, 164, 174, 0.4);
+  background: #F5F1E8;
+  border-color: #B5C9CE;
 }
 .form-row .val-input:focus {
-  background: rgba(90, 164, 174, 0.22);
+  background: #FFFFFF;
   border-color: #5AA4AE;
-  box-shadow: 0 0 0 2px rgba(90, 164, 174, 0.25);
+  box-shadow: 0 0 0 2px rgba(90, 164, 174, 0.3);
 }
 .form-row .val.readonly {
-  color: #F0C239;
+  color: #9C5A1A;
   font-family: "Consolas", monospace;
   font-size: 11px;
-  opacity: 0.7;
+  font-weight: 600;
+  opacity: 0.8;
   cursor: help;
 }
 

@@ -1,0 +1,21 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+       background: #0f0f1e; color: #D6ECF0; min-height: 100vh; padding: 16px; }
+.cmp-container { max-width: 1200px; margin: 0 auto; }
+.cmp-title { color: #5AA4AE; font-size: 18px; letter-spacing: 1px; margin-bottom: 16px; text-align: center; }
+.cmp-layout { display: grid; grid-template-columns: 240px 1fr; gap: 16px; }
+.cmp-sidebar, .cmp-main { display: flex; flex-direction: column; gap: 12px; }
+.cmp-sidebar { background: #1a1a2e; border-radius: 8px; padding: 12px; }
+.cmp-sidebar h3 { color: #5AA4AE; font-size: 12px; text-transform: uppercase; margin-bottom: 8px; }
+.scenario-list { max-height: 400px; overflow-y: auto; margin-bottom: 12px; }
+.scenario-item { display: flex; align-items: center; gap: 8px; padding: 6px;
+                 border-bottom: 1px solid #2a2a3e; font-size: 12px; }
+.scenario-item input { cursor: pointer; }
+.scenario-item label { color: #D6ECF0; cursor: pointer; flex: 1; }
+.scenario-item .meta { color: #758A99; font-size: 10px; }
+.cmp-actions { display: flex; flex-direction: column; gap: 8px; }
+.cmp-btn { background: linear-gradient(135deg, #5AA4AE, #758A99); color: #fff;
+          border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+.cmp-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.cmp-plots { background: #1a1a2e; border-radius: 8px; padding: 12px; }
+#plot-canvas { background: #0a0a14; border-radius: 4px; display: block; width: 100%; }

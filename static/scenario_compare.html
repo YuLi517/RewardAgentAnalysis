@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📊 SCENARIO 对比 (招商/路演)</title>
+  <link rel="stylesheet" href="/static/scenario_compare.css">
+</head>
+<body>
+  <div class="cmp-container">
+    <h1 class="cmp-title">📊 SCENARIO 对比 (招商/路演)</h1>
+
+    <div class="cmp-layout">
+      <!-- 左侧栏: scenario 列表 -->
+      <div class="cmp-sidebar">
+        <h3>📋 Scenarios (选 2-4)</h3>
+        <div id="scenario-list" class="scenario-list">加载中...</div>
+        <div class="cmp-actions">
+          <button id="btn-export-png" class="cmp-btn">📷 导出 PNG</button>
+          <button id="btn-export-csv" class="cmp-btn">📊 导出 CSV (选 1 个)</button>
+        </div>
+      </div>
+
+      <!-- 中间: 8 subplot 折线 -->
+      <div class="cmp-main">
+        <div class="cmp-plots">
+          <canvas id="plot-canvas" width="900" height="500"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/static/scenario_compare.js"></script>
+</body>
+</html>

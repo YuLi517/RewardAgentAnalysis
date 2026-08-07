@@ -2300,3 +2300,34 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 - �� builder �ϸ� or lv in range(1, max_lv) һ�δ���һ��, ���⸸����������, �ϸ�ֲ�
 **�� PR2 ��֤**: 8 �ֱ�������һ���� (Root 15 ���ۼ� ,024,983 ���� 0 ����)
 
+
+
+
+### 6.2 P1 PR2 — 8 种报酬纯函数
+
+**业务**: own_basic 真实实现 (跟旧数字一致), 7 种函数 stub 返 0
+**完成日**: 2026-08-07 (本轮)
+**Commit**: `302b2ff` Task 1 + `1f0d377` Task 2-8
+**关键文件**:
+- `scenario/commission/own_basic.py` — **真实实现** (PR #72 v2 5 子区 P/L 配对, Root 15 月累计 $30,001.50 跟旧 0 差异)
+- `scenario/commission/pair_bonus.py` / `team_bonus.py` / `savings.py` / `leader.py` / `horizontal.py` / `retail_profit.py` — **stub 返 0**
+- `scenario/commission/opportunity.py` — **stub** (启用时 raise NotImplementedError, 业务规则用户未拍板)
+- `scenario/breakdown.py` — `compute_commission_breakdown(scenario, bfs_id, month)` (12 字段组装)
+- `scenario/overview.py` — `compute_month_overview(scenario, month)` (全网 8 种合计)
+
+**验收 (31 测试全过)**:
+- 7 + 3 + 3 + 5 + 3 + 5 + 5 = 31 测试
+- Root 15 月 ownBasic 累计 = $30,001.50 (跟旧 0 差异, < $0.01)
+- Root 15 月 total = $30,001.50 (其他 7 种 stub 0)
+- overview month=14 全网 ownBasic > 0 (其他 7 种 0)
+- breakdown 12 字段结构 OK
+- 算法层 0 regression: test_pair_commission t1/t2/t3 全过
+- pytest 跑后 9 fail 是 live DB wipe 状态 (跟 PR2 无关, §12 教训)
+
+**PR2 收尾待办 (后续)**:
+- Task 2-7: 7 种函数从 stub 升级到真实实现, Root total 应 = $1,024,983.26
+- Task 10: skills/pair_commission.py 旧函数调 scenario wrapper (待 PR4 一起做)
+
+**业务价值 (用户路演场景)**:
+- PR2 当前 status: 客户能调 4 组参数, 实时看 ownBasic 在 15 月累计 (1 个算法维度)
+- PR2 收尾后: 8 种报酬全跑通, 客户能看完整 commission + savings + leader 分红 (8 维度)

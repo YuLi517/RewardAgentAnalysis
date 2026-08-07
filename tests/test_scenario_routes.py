@@ -215,3 +215,70 @@ def test_get_state_404_for_missing_scenario():
             os.unlink(path)
         except (PermissionError, OSError):
             pass
+
+
+def test_list_scenarios_csv():
+    """GET /api/scenarios 返 CSV 列表 (id,name,created_at,...)"""
+    get_db_fn, engine, path = _override_db()
+    app.dependency_overrides[get_db] = get_db_fn
+    try:
+        client = TestClient(app)
+        # 建 2 个 scenario
+        body = _sample_body(name="list_test_1", max_level=2, layer_counts={"0": 1, "1": 2, "2": 2})
+        client.post("/api/scenarios", json=body)
+        body2 = _sample_body(name="list_test_2", max_level=2, layer_counts={"0": 1, "1": 2, "2": 2})
+        client.post("/api/scenarios", json=body2)
+        # 拉 list
+        resp = client.get("/api/scenarios")
+        assert resp.status_code == 200
+        text = resp.text
+        lines = text.strip().split("\n")
+        assert lines[0] == "id,name,created_at,total_target,total_weeks,total_months"
+        assert len(lines) >= 3, f"应 ≥ 3 行 (header + 2 data), 实际 {len(lines)}"
+        assert "list_test_1" in text
+        assert "list_test_2" in text
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+        try:
+            os.unlink(path)
+        except (PermissionError, OSError):
+            pass
+
+
+def test_export_scenario_csv():
+    """GET /api/scenarios/{id}/export/csv?total_months=2 返 1 header + 3 月 × 8 报酬 = 25 行"""
+    get_db_fn, engine, path = _override_db()
+    app.dependency_overrides[get_db] = get_db_fn
+    try:
+        client = TestClient(app)
+        # 建 1 个 scenario (max_level=4 layer_counts 23 节点, total > 0)
+        body = _sample_body(name="export_test", max_level=4, layer_counts={"0": 1, "1": 2, "2": 4, "3": 8, "4": 8})
+        resp = client.post("/api/scenarios", json=body)
+        assert resp.status_code == 201
+        sid = resp.json()["id"]
+        # 拉 csv
+        resp2 = client.get(f"/api/scenarios/{sid}/export/csv?total_months=2")
+        assert resp2.status_code == 200
+        text = resp2.text
+        lines = text.strip().split("\n")
+        # 1 header + 3 月 × 8 报酬 = 25 行
+        assert lines[0] == "scenario_id,scenario_name,month,field,value"
+        assert len(lines) == 1 + 3 * 8, f"应 25 行, 实际 {len(lines)}"
+        # 校验月 2 累计 > 0
+        m2_lines = [l for l in lines[1:] if l.split(",")[2] == "2"]
+        assert len(m2_lines) == 8
+        total_line = [l for l in m2_lines if l.endswith("total") or ",total," in l][0] if any(",total," in l for l in m2_lines) else m2_lines[-1]
+        # 找 total 行的 value
+        for l in m2_lines:
+            if ",total," in l:
+                val = float(l.split(",")[-1])
+                assert val > 0, f"M2 total 应 > 0, 实际 {val}"
+                break
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+        try:
+            os.unlink(path)
+        except (PermissionError, OSError):
+            pass

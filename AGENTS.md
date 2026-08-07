@@ -2404,3 +2404,33 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 - Task 1-5: skills/pair_commission.py 旧函数 → scenario wrapper
 - Task 6: main.py 0 改动, 旧运营 UI 跟新 scenario_routes 共存
 - Task 7-8: 跟 main.py 集成测试 + UAT zip 打包
+
+
+
+### 6.5 P3 PR1 — 树形动态生长 UI (独立 scenario.html)
+
+**业务**: 招商/路演客户调 4 组参数, 实时看 8 种报酬在 15 月累计 + Canvas 树形图
+**完成日**: 2026-08-07 (本轮)
+**Commit**: `1715180` Task 1 + `1074539` Task 2 + `da0d995` Task 3 + `7c8a16aa` Task 4 + `98b40ba` Task 5 + `本 commit` Task 6
+**关键文件**:
+- `static/scenario.html` — 2 栏布局: 左 4 个 border-beam 表单 + 右 Canvas + 8 卡片
+- `static/scenario.css` — 科技感样式 (border-beam 纯 CSS conic-gradient + 暗背景 + 多色 token)
+- `static/scenario.js` — Canvas 树形渲染 + POST/GET 路由调用 + 8 卡片更新 + toast
+- `static/index.html` — 顶部 nav 加 `<a href="/static/scenario.html">📐 Scenario</a>` 入口
+- `tests/test_scenario_ui_e2e.py` — Playwright e2e (skipif 兜底, 没 playwright 不阻塞)
+
+**验收 (5/5 task 验证)**:
+- Task 1 基础布局: 浏览器加载 2 栏 + 4 border-beam + 8 卡片占位
+- Task 2 Canvas 树形: 29 节点 L0-L3 渲染 (L4+ 提示省略)
+- Task 3 API 集成: 1 POST + 1 GET (overview) ≤ 2s, 8 卡片有数字, total > 0
+- Task 4 入口: 主菜单 nav 看到 "📐 Scenario" link
+- Task 5 e2e: 2 测试 (load + submit), skipif 兜底
+
+**业务价值 (路演场景)**:
+- 调 4 组参数 → 提交 → 实时看 8 报酬 (≤2s) → 演示给客户
+- 跟 scenario_routes 3 路由 1:1 对接, 0 后端改动
+- 科技感视觉 (border-beam 光束) 突出"现代化分析"
+
+**后续 (P3 PR2/PR3)**:
+- PR2: 时间轴折线 + 月累计
+- PR3: 多 scenario 对比 + 导出 PNG/CSV

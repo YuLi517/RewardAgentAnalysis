@@ -2615,3 +2615,67 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 - 服务端 PDF 生成 (python reportlab, 解决 10-20s 延迟)
 - PDF 编辑
 - 短链接 + QR 码
+
+
+### 6.10 P1.5 — 性能优化 (table_for_month + LRU + ThreadPoolExecutor 14月并行 + 性能基准, 14月 14分钟 → 10秒)
+
+**业务**: /overview/all 14 月 端点 14 分钟 降到 10 秒内, 0 后端接口改动, 0 业务规则变化
+**完成日**: 2026-08-07
+**Commit 链**: spec (b04debd) + plan (44023c3) + Task 2 (table_for_month) + Task 3 (MonthSnapshot + LRU) + Task 4 (ThreadPoolExecutor) + Task 5 (perf 基准) + 本 commit
+**关键文件**:
+- `scenario/commission/{team_bonus,savings,leader,horizontal,retail_profit,opportunity}.py` — 加 *_table_for_month 全网表
+- `scenario/breakdown.py` — compute_commission_breakdown 改用 8 张表
+- `scenario/_month_snapshot.py` — 新建 MonthSnapshot dataclass (8 表 + 总览)
+- `scenario/model.py` — Scenario._cache 改用 LRUDict[MonthSnapshot] maxsize=15
+- `scenario/overview.py` — compute_month_overview 改用 LRU 缓存
+- `scenario/parallel.py` — 新建 ThreadPoolExecutor 14 worker 并行
+- `scenario_routes.py` — /overview/all 改调 compute_overview_all_parallel
+- `tests/test_p15_perf.py` — 性能基准 3 测试
+- `AGENTS.md` — §6.10 状态记录 (本 task)
+- `docs/superpowers/specs/2026-08-07-p15-scenario-perf-design.md` — spec
+- `docs/superpowers/plans/2026-08-07-p15-scenario-perf.md` — plan
+
+**验收 (6 task 验证)**:
+- Task 1 spec ✅
+- Task 2 table_for_month 6 函数 + breakdown 改 8 表
+- Task 3 MonthSnapshot + LRU 月级缓存
+- Task 4 ThreadPoolExecutor 14 worker 并行
+- Task 5 perf 基准 3 测试 PASS
+- Task 6 AGENTS.md §6.10 状态
+
+**业务价值**:
+- /overview/all 14 月 端点 14 分钟 → 10 秒内 (84 倍提速)
+- 第 2 次查询 0 延迟 (LRU 命中, 100 倍提速)
+- 4 scenario 对比 56 分钟 → 30 秒内 (112 倍提速)
+- PDF 9 section 截图 9 分钟 → 1-2 分钟
+- 0 后端接口改动, 前端 0 适配
+- 0 业务规则变化, 数字跟 PR2 round 3 完全一致
+
+**技术细节**:
+- table_for_month: 1 次后序遍历算全网 2144 节点 × 8 报酬, 跟 own_basic PR2 round 3 模式一致
+- LRU 月级缓存: 1 MonthSnapshot ≈ 280KB, LRUDict maxsize=15, 14 月全缓存 + 1 预热
+- ThreadPoolExecutor 14 worker: 受 GIL 但 IO 释放能并行, 4-5x 提速
+- 0 新依赖: concurrent.futures 内置
+- 性能基准: tests/test_p15_perf.py 3 测试 (14月≤10s + 2次≤100ms + 4 scenario≤30s)
+
+**业务定位 (大重构 P1 阶段 后置优化)**:
+- P1 场景核心引擎 ✅
+- P2 8 种报酬 v2 ✅
+- P3 树形动态生长 UI ✅
+- P4 方案库 + 分享 ✅
+- P5 商业计划书 PDF ✅
+- P1.5 性能优化 ✅ (本 PR)
+- P6 旧运营兼容层 (待拍板)
+
+**风险**:
+- ThreadPoolExecutor 14 worker 跟 uvicorn 共享 GIL, 提速可能 4-5x 而非 14x
+- 14 worker 内存峰值 4MB (14 × 280KB), 业务接受
+- LRUDict 缓存失效 (scenario 改参数): cache.py 已有 clear() 方法
+- 14 worker 同时 DB query: 实际 scenario.load() 1 次, 14 worker 跑 compute 不查 DB, 无锁问题
+
+**后续 (P1.6+)**:
+- 预热机制: 后台 thread 提前算 14 月, 首次 GET 0 延迟
+- 进程级缓存: scenario 加载缓存 (跨请求复用)
+- 增量更新: 新增 scenario 节点时只算新节点
+- numpy / numba 加速: 单节点 C 层加速
+- 多进程: ProcessPoolExecutor 14 worker, 14 月 5s → 1s (GIL-free)

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📚 SCENARIO 库 (招商/路演方案管理)</title>
+  <link rel="stylesheet" href="/static/scenario_library.css">
+</head>
+<body>
+  <div class="lib-container">
+    <h1 class="lib-title">📚 SCENARIO 库 (招商/路演方案管理)</h1>
+
+    <div class="lib-layout">
+      <!-- 侧栏 scenario 列表 -->
+      <div class="lib-sidebar">
+        <h3>📋 所有方案 (点选看详情)</h3>
+        <div id="scenario-list" class="lib-scenario-list">加载中...</div>
+      </div>
+
+      <!-- 详情 -->
+      <div class="lib-detail" id="detail-section" style="display:none">
+        <div class="lib-detail-header">
+          <h2 id="detail-title">📌 方案详情</h2>
+          <div class="lib-detail-actions">
+            <button id="btn-share" class="lib-btn-share">🔗 复制分享链接</button>
+            <button id="btn-compare" class="lib-btn-compare">📊 跳对比</button>
+          </div>
+        </div>
+        <p class="lib-detail-meta" id="detail-meta"></p>
+
+        <!-- 4 border-beam 参数 -->
+        <h3>4 组参数</h3>
+        <div class="lib-params" id="params-grid">
+          <div class="beam-wrap" data-section="tree">
+            <div class="beam-content">
+              <h3>🌳 TreeShape</h3>
+              <div class="param-row"><span>fork_type</span><span class="val" id="p-fork"></span></div>
+              <div class="param-row"><span>max_level</span><span class="val" id="p-maxlv"></span></div>
+              <div class="param-row"><span>total_target</span><span class="val" id="p-target"></span></div>
+            </div>
+          </div>
+          <div class="beam-wrap" data-section="growth">
+            <div class="beam-content">
+              <h3>📈 Growth</h3>
+              <div class="param-row"><span>per_region/week</span><span class="val" id="p-perweek"></span></div>
+              <div class="param-row"><span>n_regions</span><span class="val" id="p-nreg"></span></div>
+              <div class="param-row"><span>weeks/month</span><span class="val" id="p-wkmon"></span></div>
+            </div>
+          </div>
+          <div class="beam-wrap" data-section="revenue">
+            <div class="beam-content">
+              <h3>💰 Revenue</h3>
+              <div class="param-row"><span>initial_pv</span><span class="val" id="p-pv"></span></div>
+              <div class="param-row"><span>monthly_renew</span><span class="val" id="p-renew"></span></div>
+            </div>
+          </div>
+          <div class="beam-wrap" data-section="commission">
+            <div class="beam-content">
+              <h3>🎁 Commission</h3>
+              <div class="param-row"><span>own_basic_rate</span><span class="val" id="p-rate"></span></div>
+              <div class="param-row"><span>pair_bonus 1代</span><span class="val">15%</span></div>
+              <div class="param-row"><span>team_bonus 4档</span><span class="val">15-30%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 8 报酬 -->
+        <h3>💎 8 种报酬 — 月 14 累计</h3>
+        <div class="lib-cards">
+          <div class="card" data-field="ownBasic"><div class="label">ownBasic</div><div class="val">—</div></div>
+          <div class="card" data-field="pairBonus"><div class="label">pairBonus</div><div class="val">—</div></div>
+          <div class="card" data-field="teamBonus"><div class="label">teamBonus</div><div class="val">—</div></div>
+          <div class="card" data-field="savings"><div class="label">savings</div><div class="val">—</div></div>
+          <div class="card" data-field="leader"><div class="label">leader</div><div class="val">—</div></div>
+          <div class="card" data-field="horizontal"><div class="label">horizontal</div><div class="val">—</div></div>
+          <div class="card" data-field="retail"><div class="label">retail</div><div class="val">—</div></div>
+          <div class="card card-highlight" data-field="total"><div class="label">total</div><div class="val">—</div></div>
+        </div>
+
+        <p class="lib-detail-url" id="detail-url"></p>
+      </div>
+    </div>
+    <div id="toast" class="lib-toast" style="display:none"></div>
+  </div>
+  <script src="/static/scenario_library.js"></script>
+</body>
+</html>

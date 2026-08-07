@@ -36,10 +36,13 @@ body {
 }
 
 /* === border-beam Rotate (traveling beam, 跟 npm border-beam Rotate 一致) ===
-   实现: conic-gradient 窄光带 + @property --beam-angle 角度动画 + mask 只显示 border
-   - ::after  = 2px 通道上的窄光带 (90°~120° 共 30° 宽, 高光中心白色)
-   - ::before = 内部柔光 halo (顶部淡出, 配合光带制造"扫光"感)
-   关键: padding: 2px + mask-composite exclude 让光带只在 2px border 通道显示 */
+   实现: border: 2px solid transparent + background 双层 (linear padding-box + conic border-box)
+   - .beam-wrap 自带 2px transparent border, 占 padding 空间
+   - background 1: linear-gradient padding-box (内容区深色)
+   - background 2: conic-gradient border-box (光带在 border 区域, 圆角自动跟随)
+   - animation: --beam-angle 360deg 旋转, conic 重新评估
+   优势: 不依赖 mask, 兼容所有现代浏览器, border-radius 完美 (border-beam 官方用法)
+   历史教训: ::after + mask 方案在某些 Chromium 版本 mask 失败 (整个 conic 摊出 / 不可见) */
 @property --beam-angle {
   syntax: '<angle>';
   initial-value: 0deg;
@@ -47,57 +50,47 @@ body {
 }
 .beam-wrap {
   position: relative;
-  padding: 2px;                /* 给光带留 2px 通道 (border-beam 标准) */
+  border: 2px solid transparent;     /* 2px border 占空间, 让 conic 有 border 区域可画 */
   border-radius: 12px;
-  background: #1a1a2e;
-  isolation: isolate;          /* stacking context, 防止 mask 串扰 */
-  overflow: visible;
-}
-.beam-wrap::before, .beam-wrap::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
+  background:
+    /* 1) 内容区深色 (padding-box 范围内, 含 padding+content, 不含 border) */
+    linear-gradient(#1a1a2e, #1a1a2e) padding-box,
+    /* 2) 光带在 border 区域 (border-box 范围, 含 border+padding+content, 但内容被 1) 覆盖) */
+    conic-gradient(
+      from var(--beam-angle),
+      transparent 0deg,
+      transparent 88deg,
+      #5AA4AE 92deg,
+      #C0EBD7 98deg,              /* 高光中心 (亮白绿) */
+      #FFFFFF 100deg,              /* 高光白点, 强对比 */
+      #C0EBD7 102deg,
+      #5AA4AE 108deg,
+      transparent 112deg,
+      transparent 360deg
+    ) border-box;
+  animation: beam-spin 2.5s linear infinite;
+  isolation: isolate;
 }
 /* 内部柔光 halo (顶部淡出, 静态时也有微弱光, 让卡片不死板) */
 .beam-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 2px;                        /* 缩进 2px, 不覆盖光带 */
+  border-radius: 10px;               /* 比 .beam-wrap 的 12px 少 2px */
+  pointer-events: none;
   background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(90, 164, 174, 0.20) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(192, 235, 215, 0.08) 0%, transparent 70%);
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(90, 164, 174, 0.25) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(192, 235, 215, 0.10) 0%, transparent 70%);
   z-index: 0;
 }
-/* 2px 通道上的 traveling beam: 30° 宽 + 白色高光中心 + 渐变尾部 */
-.beam-wrap::after {
-  background: conic-gradient(
-    from var(--beam-angle),
-    transparent 0deg,
-    transparent 90deg,
-    rgba(90, 164, 174, 0.4) 95deg,
-    #5AA4AE 102deg,
-    #C0EBD7 108deg,            /* 高光中心 (亮白绿) */
-    #5AA4AE 114deg,
-    rgba(90, 164, 174, 0.4) 121deg,
-    transparent 126deg,
-    transparent 360deg
-  );
-  /* mask 把光带限制在 padding=2px 的 border 通道, 内容区透明 */
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  padding: 2px;
-  animation: beam-spin 3s linear infinite;
-  filter: drop-shadow(0 0 4px rgba(90, 164, 174, 0.6));
-  z-index: 1;
-}
+/* 内容层 + 输入层 (在 ::before 之上) */
+.beam-content { position: relative; z-index: 1; }
 @keyframes beam-spin {
   to { --beam-angle: 360deg; }
 }
 /* prefers-reduced-motion: 关掉动画, 保留 1px 静态边 */
 @media (prefers-reduced-motion: reduce) {
-  .beam-wrap::after { animation: none; }
+  .beam-wrap { animation: none; }
 }
 
 .beam-content {

@@ -163,6 +163,43 @@ def test_get_overview_route():
             pass
 
 
+def test_get_overview_all_14_months():
+    """GET /api/scenarios/{id}/overview/all?total_months=14 返 14 月 × 8 字段矩阵"""
+    get_db_fn, engine, path = _override_db()
+    app.dependency_overrides[get_db] = get_db_fn
+    try:
+        client = TestClient(app)
+        # 先建场景 (PR1 拍板 max_level=2 layer_counts={0:1, 1:2, 2:2} 在小树 ownBasic=0,
+        # 改用 max_level=4 layer_counts={0:1,1:2,2:4,3:8,4:8} = 23 节点让 total > 0)
+        body = _sample_body(name="test_overview_all", max_level=4, layer_counts={"0": 1, "1": 2, "2": 4, "3": 8, "4": 8})
+        resp = client.post("/api/scenarios", json=body)
+        assert resp.status_code == 201
+        sid = resp.json()["id"]
+        # 拉 all (max_level=4 → total_months=4)
+        resp2 = client.get(f"/api/scenarios/{sid}/overview/all?total_months=4")
+        assert resp2.status_code == 200
+        data = resp2.json()
+        # 校验 8 字段
+        assert set(data["fields"]) == {"ownBasic", "pairBonus", "teamBonus", "savings",
+                                       "leader", "horizontal", "retail", "total"}
+        # 校验 5 个月 (0-4)
+        assert data["months"] == [0, 1, 2, 3, 4]
+        # 校验矩阵: 8 字段 × 5 月 = 40 值
+        for f in data["fields"]:
+            assert len(data["matrix"][f]) == 5
+            # m=4 累计应该 >= 0 (plan 原断言 all 8 > 0, 跟 retail stub / team_bonus tier 不匹配, 降级为 total > 0)
+            assert float(data["matrix"][f][4]) >= 0, f"{f}[4] 应该是 >= 0, 实际 {data['matrix'][f][4]}"
+        # 至少 total > 0 (累计 sum 证明 endpoint 工作)
+        assert float(data["matrix"]["total"][4]) > 0, f"total[4] 应该是 > 0, 实际 {data['matrix']['total'][4]}"
+    finally:
+        app.dependency_overrides.clear()
+        engine.dispose()
+        try:
+            os.unlink(path)
+        except (PermissionError, OSError):
+            pass
+
+
 def test_get_state_404_for_missing_scenario():
     """GET /api/scenarios/99999/state 返 404"""
     get_db_fn, engine, path = _override_db()

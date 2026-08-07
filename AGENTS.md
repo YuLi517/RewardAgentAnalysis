@@ -2752,3 +2752,74 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 - P1.8: numpy / numba C 层加速
 - P1.9: 分布式缓存 (Redis)
 - P1.10: 数据库 schema 优化
+
+
+### 6.12 P6 — 旧运营兼容层 (迁移+删旧+0 回归, 大重构 P1 阶段 100% 收官)
+
+**业务**: 物理删除 tools/rebuild_2144_simulation.py + _final_output_v3.txt (旧报表工具 + 旧输出), 0 业务规则变化验证
+**完成日**: 2026-08-07
+**Commit 链**: spec (499d6f7) + Task 1 备份 (a992104) + Task 2 (scenario_report.py 9b9991a) + Task 3 (删旧 2 文件 7e1712c) + Task 4 (业务规则一致性 adcd839) + 本 commit
+**关键文件**:
+- `tools/scenario_report.py` — 新报表工具 (替代旧 rebuild_2144_simulation.py)
+- `tools/rebuild_2144_simulation.py` — 物理删除
+- `tools/_final_output_v3.txt` — 物理删除
+- `tests/test_pr4_strict_consistency.py` — 业务规则一致性 3 测试 (P1 PR2 拍板 + 0 import 旧 tools + 0 回归)
+- `AGENTS.md` — §6.12 P6 状态记录 (本 task)
+- `docs/superpowers/specs/2026-08-07-p6-legacy-compat-design.md` — spec
+
+**验收 (4 task 验证)**:
+- Task 1 备份 + 回滚点 ✅
+- Task 2 tools/scenario_report.py 创建 ✅
+- Task 3 物理删除 2 旧文件 ✅
+- Task 4 业务规则一致性 3 测试 PASS ✅
+- Task 5 AGENTS.md §6.12 更新
+
+**业务价值**:
+- 物理删除 2 冗余旧文件 (旧报表工具 + 旧输出), 工作区精简
+- tools/scenario_report.py 替代旧 rebuild_2144_simulation.py, 调 scenario/ 引擎
+- 0 业务规则变化 (跟 P1 PR2 拍板 4 函数对齐版一致, 业务接受 BFS 偏差)
+- 业务规则一致性 3 测试验证 (P1 PR2 拍板 + 0 import 旧 tools + 0 回归)
+
+**关键决策 (2026-08-07)**:
+- P6 严格验证期望值 拍板 跟 P1 PR2 拍板 ($1,253,783) 一致, 不是 _final_output_v3.txt ($1,024,983)
+- 业务接受 P1 PR2 round 3 拍板的 2 函数 BFS 偏差 (team_bonus + leader)
+- 跳过 4 套方案严格验证, 改为 0 回归验证 (跟当前 main.py 一致)
+- 旧 _final_output_v3.txt 是 PR2 之前的旧数字, P1 PR2 之后不再用
+
+**P6 简化 (跟 P1 PR4 plan 区别)**:
+- 跳过 main.py 业务路由迁移 (main.py 用 skills/ 是周结算 get_period_phase / can_supplement / settle_period / get_or_create_period, 不是月报酬, scenario/ 引擎不覆盖)
+- 保留 skills/period.py + skills/pair_commission.py (周结算业务, 业务仍在)
+- 物理删除 2 文件 (本来就没在 git 跟踪, 用 --allow-empty commit 标记)
+
+**业务定位 (大重构 P1 阶段 100% 收官)**:
+- P1 场景核心引擎 ✅
+- P2 8 种报酬 v2 ✅
+- P3 树形动态生长 UI ✅
+- P4 方案库 + 分享 ✅
+- P5 商业计划书 PDF ✅
+- P1.5 性能优化一阶 ✅ (14月 14分钟 → 760ms, 1100x 提速)
+- P1.6 性能优化二阶 ✅ (1st call 760ms → 0-200ms)
+- **P6 旧运营兼容层 (本 PR, 迁移+删旧, 100% 收官) ✅**
+
+总 8 子项目 50+ commit, 大重构 P1 阶段 100% 收官.
+
+**数字验证 (verify_p6_t4.py 跑过 ALL OK)**:
+- 2 叉 9 层 1500PV Root 15 月累计: $1,253,783.00 (P1 PR2 拍板, 业务接受 0.005 rounding)
+- ownBasic: $30,001.50
+- pairBonus: $251,781.27
+- teamBonus: $945,000.00
+- savings: $4,500.22
+- leader: $0.00
+- horizontal: $22,500.00
+
+**风险**:
+- main.py 业务路由改完数字跟当前不一致 → 0 回归测试 fail 不合并 (实际跳过, 保留 skills/ 周结算)
+- 旧 _final_output_v3.txt 期望 $1,024,983 跟 P1 PR2 拍板 $1,253,783 矛盾 → 用户拍板跟 P1 PR2, 跳过 _final_output_v3.txt 严格验证
+- 业务规则变化 (test_pr4_strict_consistency fail) → 业务接受 0 业务规则变化, 任何 0.01 偏差不合并
+
+**后续 (大重构 P2 阶段, 业务待拍板)**:
+- P2.1: 业务规则扩展 (新 commission 模式, 新 PV 公式, ...)
+- P2.2: 多语言 (i18n)
+- P2.3: 移动端 (PWA / React Native)
+- P2.4: 真实业务数据接入 (从 demo 切到 production)
+- P2.5: SaaS 化 (多租户 / 权限 / 计费)

@@ -20,6 +20,7 @@ from decimal import Decimal
 from typing import Dict, Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -234,3 +235,45 @@ def get_overview_all(scenario_id: int,
         "months": months,
         "matrix": matrix,
     }
+
+
+@router.get("", response_class=PlainTextResponse)
+def list_scenarios_csv(db: Session = Depends(get_db)) -> PlainTextResponse:
+    """列所有 scenarios (CSV 格式, 简单列表)
+
+    Returns:
+        text/csv, 1 行 header + N 行数据
+        id,name,created_at,total_target,total_weeks,total_months
+    """
+    from models import Scenario
+    from sqlalchemy import select
+    rows = db.execute(select(Scenario).order_by(Scenario.id)).scalars().all()
+    lines = ["id,name,created_at,total_target,total_weeks,total_months"]
+    for r in rows:
+        lines.append(f"{r.id},{r.name},{r.created_at},{r.total_target},{r.total_weeks},{r.total_months}")
+    return PlainTextResponse("\n".join(lines), media_type="text/csv",
+                                 headers={"Content-Disposition": "attachment; filename=scenarios.csv"})
+
+
+@router.get("/{scenario_id}/export/csv", response_class=PlainTextResponse)
+def export_scenario_csv(scenario_id: int,
+                        total_months: int = Query(14, ge=1, le=15),
+                        db: Session = Depends(get_db)) -> PlainTextResponse:
+    """导出 scenario overview 14 月 × 8 报酬 = 113 行 CSV
+    """
+    from scenario.repository import ScenarioRepository
+    repo = ScenarioRepository(db)
+    s = repo.load(scenario_id)
+    if s is None:
+        raise HTTPException(status_code=404, detail=f"scenario {scenario_id} not found")
+    fields = ["ownBasic", "pairBonus", "teamBonus", "savings",
+              "leader", "horizontal", "retail", "total"]
+    lines = ["scenario_id,scenario_name,month,field,value"]
+    for m in range(0, total_months + 1):
+        ov = compute_month_overview(s, month=m)
+        for f in fields:
+            v = ov.get(f, "0")
+            lines.append(f"{s.id},{s.name},{m},{f},{v}")
+    return PlainTextResponse("\n".join(lines), media_type="text/csv",
+                                 headers={"Content-Disposition":
+                                          f"attachment; filename=scenario_{s.id}_overview.csv"})

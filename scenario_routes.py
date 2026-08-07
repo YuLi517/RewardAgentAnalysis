@@ -203,3 +203,34 @@ def get_overview(scenario_id: int,
         raise HTTPException(status_code=404, detail=f"scenario {scenario_id} not found")
     overview = compute_month_overview(s, month=month)
     return {k: str(v) for k, v in overview.items()}
+
+
+@router.get("/{scenario_id}/overview/all")
+def get_overview_all(scenario_id: int,
+                     total_months: int = Query(14, ge=1, le=15),
+                     db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """取 scenario 0-total_months 月的 8 报酬 × 月 矩阵 (heatmap 渲染用)
+
+    业务 (P3 PR2):
+      - 1 次算 14 月 × 8 报酬 = 112 值 (避免前端 14 次串行 GET)
+      - 14 月 × 60s/月 = 14 分钟, 业务接受 (跟 PR1 60s 一致)
+      - 矩阵按字段分组, 返 15 个 string (0-14 月)
+    """
+    repo = ScenarioRepository(db)
+    s = repo.load(scenario_id)
+    if s is None:
+        raise HTTPException(status_code=404, detail=f"scenario {scenario_id} not found")
+    fields = ["ownBasic", "pairBonus", "teamBonus", "savings",
+              "leader", "horizontal", "retail", "total"]
+    months = list(range(0, total_months + 1))
+    matrix: Dict[str, list] = {f: [None] * (total_months + 1) for f in fields}
+    for m in months:
+        overview = compute_month_overview(s, month=m)
+        for f in fields:
+            matrix[f][m] = str(overview.get(f, "0"))
+    return {
+        "total_months": total_months,
+        "fields": fields,
+        "months": months,
+        "matrix": matrix,
+    }

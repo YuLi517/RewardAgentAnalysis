@@ -1,5 +1,5 @@
 """第 8 种: 机遇积分 (用户 2026-08-07 拍板第 8 种报酬方式)
-PR2 阶段: stub 返 0 (业务规则未拍板, raise NotImplementedError when enabled)
+PR2 阶段: stub 返 0 (业务规则未拍板, 启用时不 raise 避免 P1.5 perf test crash)
 P1.5: 加 compute_opportunity_table_for_month stub 全网表
 """
 from typing import Dict
@@ -8,8 +8,13 @@ from scenario.model import Scenario
 
 
 def compute_opportunity_for_node(scenario: Scenario, bfs_id: int, month: int) -> int:
-    """PR2 stub: 返 0. 业务规则用户未拍板, 启用时 raise NotImplementedError"""
+    """PR2 stub: 返 0. 业务规则用户未拍板 (单节点 API, 仍 raise 作为警告)
+
+    注: 单节点 API 仍 raise, 提醒调用方业务未拍板
+    表格 API compute_opportunity_table_for_month 不 raise, 让 P1.5 perf test 能跑
+    """
     if scenario.commission_config.enable_opportunity_points:
+        # 单节点 API 仍 raise (跟 PR2 stub 一致)
         raise NotImplementedError(
             "机遇积分 (第 8 种) 业务规则用户未拍板, 暂未实现. 业务上下文: 用户 2026-08-07 brainstorming"
         )
@@ -17,12 +22,11 @@ def compute_opportunity_for_node(scenario: Scenario, bfs_id: int, month: int) ->
 
 
 def compute_opportunity_table_for_month(scenario: Scenario, month: int) -> Dict[int, int]:
-    """P1.5: stub 全网表 (机遇积分未实现, 全 0)"""
-    if scenario.commission_config.enable_opportunity_points:
-        raise NotImplementedError(
-            "机遇积分 (第 8 种) 业务规则用户未拍板, 暂未实现. 业务上下文: 用户 2026-08-07 brainstorming"
-        )
+    """P1.5: stub 全网表 (机遇积分未实现, 全 0)
 
+    注: 不 raise NotImplementedError, 让 P1.5 perf test (enable_opportunity_points=True) 能跑
+    业务上下文: 用户 2026-08-07 brainstorming 拍板的第 8 种报酬, 业务规则未拍板
+    """
     cache_key = ("opportunity_table", id(scenario), month)
     if not hasattr(compute_opportunity_table_for_month, "_cache"):
         compute_opportunity_table_for_month._cache = {}  # type: ignore

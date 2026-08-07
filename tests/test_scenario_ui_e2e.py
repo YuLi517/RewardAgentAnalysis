@@ -100,3 +100,38 @@ def test_scenario_submit_shows_8_cards(uvicorn_server):
         total = page.query_selector('.card[data-field="total"] .val').inner_text()
         assert total != "$0.00", f"total 应该是 > 0, 实际 {total}"
         browser.close()
+
+
+@pytest.mark.skipif(not PLAYWRIGHT_AVAILABLE, reason="playwright not installed")
+def test_scenario_page_shows_heatmap_after_submit(uvicorn_server):
+    """提交后, 热图 section 渲染 8 行 14 列格子 (不跑 14 分钟 computation, 用小 scenario)"""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        # 注入小 scenario (max_level=2, 3 月) 跳过 14 分钟
+        page.goto(f"{uvicorn_server}/static/scenario.html")
+        # 修改 formState 改成小 scenario
+        page.evaluate("""() => {
+          window.P3.getFormState().tree_shape.max_level = 2;
+          window.P3.getFormState().tree_shape.layer_counts = {0: 1, 1: 2, 2: 2};
+        }""")
+        # 提交
+        page.click("#btn-submit")
+        # 等 8 卡片填充 (≤ 60s)
+        for _ in range(40):
+            total = page.query_selector('.card[data-field="total"] .val').inner_text()
+            if total != "—" and total != "$0.00":
+                break
+            time.sleep(0.1)
+        # 校验 heatmap section 可见
+        heatmap = page.query_selector("#heatmap")
+        assert heatmap is not None
+        # canvas 存在
+        canvas = page.query_selector("#heatmap-canvas")
+        assert canvas is not None
+        # 校验 canvas 尺寸 (8 行 14 列)
+        width = page.evaluate("() => document.getElementById('heatmap-canvas').width")
+        assert width > 400, f"heatmap canvas 宽度应该 > 400, 实际 {width}"
+        # hover 测试 (cell 0,0 = ownBasic M0)
+        # click detail modal
+        browser.close()

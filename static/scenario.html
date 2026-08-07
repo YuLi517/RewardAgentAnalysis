@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📐 SCENARIO 招商/路演实时计算器</title>
+  <link rel="stylesheet" href="/static/scenario.css">
+</head>
+<body>
+  <div class="p3-container">
+    <h1 class="p3-title">📐 SCENARIO 招商/路演实时计算器</h1>
+
+    <div class="p3-layout">
+      <!-- LEFT: 4 个 border-beam 表单 -->
+      <div class="p3-left">
+        <div class="beam-wrap" data-section="tree">
+          <div class="beam-content">
+            <h3>🌳 TreeShape (树形)</h3>
+            <div class="form-row"><span>fork_type</span><span class="val">binary</span></div>
+            <div class="form-row"><span>max_level</span><span class="val">10</span></div>
+            <div class="form-row"><span>total_target</span><span class="val">2144</span></div>
+          </div>
+        </div>
+        <div class="beam-wrap" data-section="growth">
+          <div class="beam-content">
+            <h3>📈 Growth (增长)</h3>
+            <div class="form-row"><span>per_region/week</span><span class="val">9</span></div>
+            <div class="form-row"><span>n_regions</span><span class="val">4</span></div>
+            <div class="form-row"><span>weeks/month</span><span class="val">4</span></div>
+          </div>
+        </div>
+        <div class="beam-wrap" data-section="revenue">
+          <div class="beam-content">
+            <h3>💰 Revenue (收入)</h3>
+            <div class="form-row"><span>initial_pv</span><span class="val">1500</span></div>
+            <div class="form-row"><span>monthly_renew</span><span class="val">100</span></div>
+          </div>
+        </div>
+        <div class="beam-wrap" data-section="commission">
+          <div class="beam-content">
+            <h3>🎁 Commission (报酬)</h3>
+            <div class="form-row"><span>own_basic_rate</span><span class="val">15%</span></div>
+            <div class="form-row"><span>pair_bonus 1代</span><span class="val">15%</span></div>
+            <div class="form-row"><span>team_bonus 4档</span><span class="val">15-30%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Canvas 树形 + 8 卡片 -->
+      <div class="p3-right">
+        <h2>🌲 树形图 (Canvas 2D)</h2>
+        <div class="canvas-wrap">
+          <canvas id="tree-canvas" width="600" height="280"></canvas>
+          <p class="canvas-hint">省略 L4+, 共 2144 节点</p>
+        </div>
+
+        <h2>💎 8 种报酬 — 月 14 累计</h2>
+        <div class="p3-cards">
+          <div class="card" data-field="ownBasic"><div class="label">ownBasic</div><div class="val">—</div></div>
+          <div class="card" data-field="pairBonus"><div class="label">pairBonus</div><div class="val">—</div></div>
+          <div class="card" data-field="teamBonus"><div class="label">teamBonus</div><div class="val">—</div></div>
+          <div class="card" data-field="savings"><div class="label">savings</div><div class="val">—</div></div>
+          <div class="card" data-field="leader"><div class="label">leader</div><div class="val">—</div></div>
+          <div class="card" data-field="horizontal"><div class="label">horizontal</div><div class="val">—</div></div>
+          <div class="card" data-field="retail"><div class="label">retail</div><div class="val">—</div></div>
+          <div class="card card-highlight" data-field="total"><div class="label">total</div><div class="val">—</div></div>
+        </div>
+
+        <div class="p3-submit-row">
+          <button id="btn-preview" class="p3-preview-btn">👁 树形预览</button>
+          <button id="btn-submit" class="p3-submit-btn">🎲 提交场景 + 算报酬</button>
+        </div>
+
+        <div id="toast" class="p3-toast" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/scenario.js"></script>
+</body>
+</html>

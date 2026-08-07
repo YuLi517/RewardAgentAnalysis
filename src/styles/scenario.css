@@ -120,7 +120,10 @@ body {
   text-align: center;
 }
 
-/* === 8 报酬卡片 === */
+/* === 8 报酬卡片 ===
+   v1.0.4: 跟 .beam-wrap 一样加 box-shadow 青色外发光 + 1px 描边
+   - .card: 青色 box-shadow (跟左侧 4 卡片视觉一致, 暗示"在发光")
+   - .card-highlight (TOTAL): 青白色 box-shadow (跟现有 border 1px #C0EBD7 配套) */
 .p3-cards {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -130,6 +133,9 @@ body {
   background: #1a1a2e;
   border-radius: 8px;
   padding: 8px 12px;
+  box-shadow:
+    0 0 0 1px rgba(90, 164, 174, 0.12),       /* 微弱青色描边, 卡片轮廓在深色 body 上显形 */
+    0 0 12px rgba(90, 164, 174, 0.10);        /* 青色外发光 (比 beam-wrap 的 24px 小, 因为 8 卡片更小) */
 }
 .card .label {
   font-size: 11px;
@@ -142,7 +148,13 @@ body {
   font-family: "Consolas", monospace;
   margin-top: 4px;
 }
-.card-highlight { background: #2a3a3e; border: 1px solid #C0EBD7; }
+.card-highlight {
+  background: #2a3a3e;
+  border: 1px solid #C0EBD7;
+  box-shadow:
+    0 0 0 1px rgba(192, 235, 215, 0.25),     /* 青白色描边加强 */
+    0 0 16px rgba(192, 235, 215, 0.20);      /* 青白色外发光, 跟现有 border 配套 */
+}
 .card-highlight .val { color: #C0EBD7; }
 
 /* === 按钮 === */

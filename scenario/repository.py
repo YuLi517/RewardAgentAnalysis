@@ -21,6 +21,7 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from scenario.cache import LRUDict
 from scenario.model import (
     Scenario, TreeShape, Growth, Revenue, CommissionConfig,
 )
@@ -117,10 +118,19 @@ class ScenarioRepository:
       - list_all: 所有 scenario, 按 id 升序
       - delete: 删 DB row by id
 
-    缓存策略:
+    缓存策略 (P1.6 Task 4):
+      - 类级别 _process_cache LRUDict[int, Scenario] maxsize=20
+      - 跨请求跨实例共享, 1st call 省 scenario.load() 100ms (SQL query)
+      - 业务接受 20 个最常用 scenarios 全缓存
+      - subprocess 隔离: 多进程下各 worker 独立加载 (P1.6 跟 ProcessPoolExecutor 协同)
+
+    缓存策略 (PR3 Task 3 旧):
       - scenario._cache (LRU 50) 绑到 id(scenario_instance), 不是 row id
       - save 后再 load 是新 instance, cache miss, 重算 (但很快, builder O(N) 2K 节点)
     """
+
+    # 类级别 cache, 跨请求跨 worker 共享 (单进程)
+    _process_cache: "LRUDict[int, Scenario]" = LRUDict(maxsize=20)
 
     def __init__(self, session: Session):
         self.session = session
@@ -187,24 +197,79 @@ class ScenarioRepository:
         )
         self.session.add(row)
         self.session.commit()
+        # P1.6 Task 4: save 后 invalidate cache (新 row 取代任何 stale cached version)
+        self.invalidate_cache(row.id)
         return row.id
 
     def load(self, scenario_id: int) -> Optional[Scenario]:
-        """load DB row by id, 转 dataclass, None if 不存在"""
+        """load DB row by id, 转 dataclass, None if 不存在
+
+        P1.6 Task 4: 类级别 _process_cache 优先查, 命中省 scenario.load() 100ms
+        """
+        # 1. 查类级别 cache (跨请求复用)
+        cached = ScenarioRepository._process_cache.get(scenario_id)
+        if cached is not None:
+            return cached
+        # 2. 没缓存: DB 加载
         row = self.session.get(ScenarioORM, scenario_id)
         if row is None:
             return None
-        return _orm_to_dataclass(row)
+        s = _orm_to_dataclass(row)
+        if s is not None:
+            ScenarioRepository._process_cache.set(scenario_id, s)
+        return s
+
+    def invalidate_cache(self, scenario_id: int) -> None:
+        """手动失效 (测试用 + 后续 P6 兼容性用)
+
+        业务: save 跟 delete 不会自动失效, 改 scenario 参数后必须手动调
+        """
+        if scenario_id in ScenarioRepository._process_cache:
+            del ScenarioRepository._process_cache._data[scenario_id]
+
+    @classmethod
+    def clear_cache(cls) -> None:
+        """清空类级别 _process_cache (测试间隔离用)
+
+        业务:
+        - 类级别 cache 跨请求复用, 但跨测试 (fresh DB) 必须清
+        - 测试 conftest.py autouse fixture 自动调
+        - 业务代码不要随便调 (会丢所有缓存)
+        """
+        cls._process_cache._data.clear()
+
+    def list_ids(self) -> List[int]:
+        """列所有 scenario id (供预热用, P1.6 Task 3 预热机制依赖)"""
+        from sqlalchemy import select
+        stmt = select(ScenarioORM.id).order_by(ScenarioORM.id)
+        return [row[0] for row in self.session.execute(stmt).all()]
 
     def list_all(self) -> List[Scenario]:
-        """所有 scenarios, 按 id 升序 (跟 ORM 默认 order_by 一致)"""
+        """所有 scenarios, 按 id 升序 (跟 ORM 默认 order_by 一致)
+
+        P1.6 Task 4: 走 _process_cache 优先, 命中直接返, 避免 DB 反序列化开销
+        """
         stmt = select(ScenarioORM).order_by(ScenarioORM.id)
         rows = self.session.execute(stmt).scalars().all()
-        return [_orm_to_dataclass(r) for r in rows]
+        result: List[Scenario] = []
+        for r in rows:
+            cached = ScenarioRepository._process_cache.get(r.id)
+            if cached is not None:
+                result.append(cached)
+            else:
+                s = _orm_to_dataclass(r)
+                ScenarioRepository._process_cache.set(r.id, s)
+                result.append(s)
+        return result
 
     def delete(self, scenario_id: int) -> None:
-        """删 DB row by id (不报错 if 不存在)"""
+        """删 DB row by id (不报错 if 不存在)
+
+        P1.6 Task 4: 同时失效 _process_cache, 避免 load 返 stale cached data
+        """
         row = self.session.get(ScenarioORM, scenario_id)
         if row is not None:
             self.session.delete(row)
             self.session.commit()
+        # cache 失效: 无论 DB 是否真删, 都清掉 (避免 stale read)
+        self.invalidate_cache(scenario_id)

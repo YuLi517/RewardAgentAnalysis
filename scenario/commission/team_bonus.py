@@ -14,24 +14,22 @@ from scenario._pv import compute_weekly_period_pv
 
 def collect_period_pvs_windowed(scenario: Scenario, root_bfs: int, month: int,
                                   weekly_period_pv: List[Dict[int, int]]) -> List[int]:
-    """PR2 收尾: 递归收集 root_bfs 5 子区 subtree 中, 4 周窗口内的 own period_pv
+    """PR2 收尾 round 3: 递归收集 root_bfs 5 子区 subtree 中, 4 周窗口内 own period_pv
     业务: 节点 own period_pv 只在"加入后前 4 个业务周"内才计入父节点培育金
-    PR2 收尾关键:
-      - 节点 own PV = weekly_period_pv[node.join_week][bfs_id] (只 join_week 1 周)
-      - 4 周窗口检查: (current_week - join_week) < 4, current_week = month * 4
-      - 业务上 month 0 全网 L3 节点 1500 都贡献, month 1+ 续费 100 不命中 4 档
-      - 但 4 周窗口意味着 4 个业务周后 (join_month + 1 月) join_node 自己已出窗口
-      - PR2 收尾简化: 节点 own 1500 在 month 0 算, 月 1+ 都不算 (join_week 都 0, 4 周过完)
+    PR2 收尾关键 (round 3):
+      - builder 现在 L3+ join_week 排周 (4 大区 round_robin)
+      - 节点 own PV = 1500 在 join_week 那一周, 后续 4 周 0 (续费 100 不命中 4 档)
+      - month = m 时, 只算 join_month == m 的节点 (4 周窗口整月)
+      - 业务上: 父节点 m 月收集体是 m 月新加入 (join_month=m) 的 L3+ 子孙 own 1500
     """
     cc = scenario.commission_config
-    window = cc.team_bonus_window_weeks  # 4
     _, children_map = get_nodes_and_children(scenario)
     nodes, _ = get_nodes_and_children(scenario)
     pvs: List[int] = []
 
     def _walk(bfs_id: int):
         node = nodes[bfs_id]
-        # 检查 month - join_month < 1 (4 周窗口在 1 个月内)
+        # 4 周窗口检查: month - join_month < 1 (PR #71 业务)
         if month - node["join_month"] >= 1:
             return  # 出窗口
         # 节点 own PV = weekly_period_pv[node.join_week][bfs_id]

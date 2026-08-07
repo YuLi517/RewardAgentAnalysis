@@ -4982,3 +4982,9 @@ def api_member_add_pv(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host=settings.host, port=settings.port, reload=False)
+
+# ★ 2026-08-07 P1 PR3 Task 4: 接入 scenario_routes 3 个 HTTP 路由
+#   - 业务: 客户路演实时调参, 调 POST /api/scenarios 建场景, GET state/overview 查报酬
+#   - 不改 main.py 其他代码, 只加 include_router
+import scenario_routes  # noqa: E402
+app.include_router(scenario_routes.router)

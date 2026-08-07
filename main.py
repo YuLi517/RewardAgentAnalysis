@@ -974,6 +974,13 @@ async def lifespan(app: FastAPI):
     # 初始化数据库（创建表 + 索引）
     init_db()
 
+    # P1.6 §4.2: 预热所有 scenarios (后台 thread, 不阻塞 startup)
+    # 注: 1 个 scenario 算 15 月 × ~10ms = 150ms, 全部 scenarios 后台跑
+    # 传 SessionLocal (sessionmaker) 而非 session, 避免父进程 close 跟后台 thread race
+    from scenario.warmer import warm_all_scenarios
+    from database import SessionLocal
+    warm_all_scenarios(SessionLocal, total_months=14)
+
     log.info("=" * 60)
     log.info("🚀 RewardAgentAnalysis Stage 3 启动（SQLite 持久化已启用 · RAG 知识库已下线）")
     log.info(f"   路由链（按优先级）: {' → '.join(p.config.name for p in providers)}")

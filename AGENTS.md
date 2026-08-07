@@ -2475,3 +2475,48 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 **后续 (PR3 拍板)**:
 - 多 scenario 对比 (2-3 天)
 - 导出 PNG/CSV
+
+
+### 6.7 P3 PR3 — 多 scenario 对比 + 导出 PNG/CSV (独立 scenario_compare.html)
+
+**业务**: 调 N 个 scenario, 同图对比, 选最优给客户演示, 导出 PNG/CSV 路演后发客户
+**完成日**: 2026-08-07
+**Commit 链**: spec+plan 50f0ae1 + Task 1 (后端 list+csv) + Task 2 (路由测试) + Task 3 (html+css) + Task 4 (js 折线) + 本 2 commit
+**关键文件**:
+- `scenario_routes.py` — +2 端点: GET /api/scenarios (list) + GET /api/scenarios/{id}/export/csv
+- `tests/test_scenario_routes.py` — +2 测试 (list + csv export, 7 passed total)
+- `static/scenario_compare.html` — 独立页: 侧栏 scenario 列表 + 中间 8 subplot
+- `static/scenario_compare.js` — list + checkbox + Canvas 折线 + PNG/CSV 导出
+- `static/scenario_compare.css` — 8 subplot 布局 + 4 套配色
+- `static/index.html` — 主菜单加 "📊 Scenario 对比" 入口 (本 task 5a)
+- `AGENTS.md` — §6.7 状态记录 (本 task 5b)
+
+**验收 (5 task 验证)**:
+- Task 1 后端: 2 端点 list + csv export
+- Task 2 路由测试: 7 passed (5 PR2 + 2 PR3)
+- Task 3 前端 HTML+CSS: 独立页 2 栏布局
+- Task 4 前端 JS: list + checkbox + 8 subplot 折线 + PNG/CSV 导出
+- Task 5 主菜单入口 + AGENTS.md §6.7 (本 task)
+
+**业务价值**:
+- 多 scenario 同图对比, 选最优给客户演示
+- 导出 PNG/CSV 路演后发客户, 备跟不同 PV 档位
+- 4 套配色 (浅/中/深/全色) 区分 scenario
+
+**性能**:
+- 1 scenario 14 月 14 分钟 (跟 PR2 一样, 业务接受)
+- 4 scenario 14 月 ≈ 56 分钟 (业务接受, 折线对比 1 次算)
+- 后续 PR1.5 优化一并修
+
+**业务定位 (大重构 P1 阶段收尾)**:
+- P3 PR1+PR2+PR3 全部完成 (大重构阶段 3 UI 部分)
+- 大重构 P1 阶段 (Scenario 库 + 8 种报酬 + 持久化 + 路由 + UI) 收尾
+- 后续: PR4 迁移 + 验证 + 删旧 (拍板 P1 阶段 4 个 PR 增量迁移)
+- 后续: P2 8 种报酬 v2 (下一子项目)
+
+**后续 (大重构 P1 阶段收尾)**:
+- PR4 迁移 + 验证 + 删旧
+- P2 8 种报酬 v2
+- P4 方案库 + 对比
+- P5 商业计划书导出
+- P6 旧运营兼容层

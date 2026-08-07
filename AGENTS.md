@@ -2561,3 +2561,57 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 - 短链接 + QR 码
 - 多用户隔离
 - 方案重命名/删除
+
+### 6.9 P5 — 商业计划书 PDF 导出 (独立 scenario_pdf.html + jsPDF + html2canvas)
+
+**业务**: 招商/路演场景, 把调好的 scenario 一键导出 9 页完整版商业计划书 PDF
+**完成日**: 2026-08-07
+**Commit 链**: spec (a9dbba0) + plan (eea57b5) + Task 2 (HTML+CSS) + Task 3 (JS) + Task 4 (主菜单) + Task 5 (e2e) + 本 commit
+**关键文件**:
+- `static/scenario_pdf.html` — 独立页, 9 section 容器 + CDN
+- `static/scenario_pdf.css` — 复 P3 PR1 配色 + 9 section 排版
+- `static/scenario_pdf.js` — 6 段流程: 选/拉/画4 canvas/截图/jsPDF拼9页/下载
+- `static/index.html` — 主菜单加 "📄 Scenario PDF" 入口
+- `tests/test_scenario_pdf_e2e.py` — Playwright 2 测试 (渲染 + 下载)
+- `AGENTS.md` — §6.9 状态记录 (本 task)
+- `docs/superpowers/specs/2026-08-07-p5-scenario-pdf-design.md` — spec
+- `docs/superpowers/plans/2026-08-07-p5-scenario-pdf.md` — plan
+
+**验收 (6 task 验证)**:
+- Task 1 spec ✅
+- Task 2 前端 HTML+CSS: 独立页 2 栏 + 9 section + CDN
+- Task 3 前端 JS: 6 段流程 + 4 副 canvas + html2canvas 截图 + jsPDF 拼 9 页
+- Task 4 主菜单入口
+- Task 5 Playwright e2e 2 测试
+- Task 6 AGENTS.md §6.9 状态
+
+**业务价值**:
+- 商业计划书 PDF 是"对外交付物", 邮件附件/印刷品场景必需
+- 9 页完整版含 树形/参数/曲线/热图/TOP5, 招商路演"一方案一文档"标准化
+- 1 键下载: 选 scenario → 实时预览 → 点按钮 → 浏览器下载
+
+**技术细节**:
+- 0 后端改动, 复用 7 个现有 endpoint (PR1 state + PR2 overview/all + PR3 list)
+- 0 npm 装包, 2 个 CDN script 引入 (jsPDF 2.5 + html2canvas 1.4)
+- 中文支持: html2canvas 整段截图, jsPDF addImage 装图 (Canvas 用浏览器原生字体, 不走 jsPDF text 模式, 0 字体问题)
+- 4 副 Canvas: 树形 L0-L3 / 14 月 8 折线 / 14 月 8 报酬热图 / 节点 TOP 5 横向条形
+- TOP 5 节点: 业务接受简化版 (bfs_id=0/1/2/3/4 固定抽样, 5×60s=5min, toast 进度)
+
+**业务定位 (大重构 P1 阶段 第 5 子项目)**:
+- P1 场景核心引擎 ✅
+- P2 8 种报酬 v2 ✅
+- P3 树形动态生长 UI ✅
+- P4 方案库 + 分享 ✅
+- P5 商业计划书 PDF ✅ (本 PR)
+- P6 旧运营兼容层 (待拍板)
+
+**风险**:
+- html2canvas 截图速度 10-20s (9 section), 业务接受, toast 进度
+- TOP 5 节点 5×60s = 5 分钟, 业务接受, toast 进度
+- CDN 不可达: 加 fallback 提示
+
+**后续 (P5.1+)**:
+- 多 scenario 拼 PDF (主推+备选, 12 页)
+- 服务端 PDF 生成 (python reportlab, 解决 10-20s 延迟)
+- PDF 编辑
+- 短链接 + QR 码

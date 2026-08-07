@@ -2269,3 +2269,34 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 2. Use `detect_changes_tool` for code review.
 3. Use `get_affected_flows_tool` to understand impact.
 4. Use `query_graph_tool` pattern="tests_for" to check coverage.
+
+---
+
+## 6. 大重构 (2026-08-07 拍板)
+
+### 6.1 P1 PR1 — Scenario 库核心
+
+**业务**: 把一次性模拟脚本 (tools/rebuild_2144_simulation.py 24KB) 重构为 first-class scenario/ 库
+**范围**: 仅核心 dataclass + 树形构建 + PV 计算 + LRU 缓存, 不含 8 种报酬 (PR2)、不含量化 (PR3)、不含迁移 (PR4)
+**完成日**: 2026-08-07
+**Commit**: Task 1-6 各 1 commit (含 1 个 conftest.py collateral fix, 1 个 builder 跨层递归 bug fix)
+**关键文件**:
+- scenario/model.py — 7 个 dataclass (TreeShape/Growth/Revenue/CommissionConfig/Scenario/CommissionBreakdown/MonthSnapshot)
+- scenario/builder.py — uild_scenario() + _build_bfs_tree() (2 叉/4 叉/8 叉 3 种 fork_type)
+- scenario/_pv.py — compute_monthly_pv / compute_weekly_period_pv (从旧模拟器迁移)
+- scenario/cache.py — LRUDict (OrderedDict + maxsize=50 LRU 淘汰)
+- scenario/__init__.py — 11 个公开 API 导出
+- conftest.py — collateral fix, 把根目录加到 sys.path 让 pytest 找得到 scenario 包
+**验收 (21 测试全过)**:
+- ? 7 个 dataclass 字段单测通过 (test_scenario_model.py)
+- ? 2 叉 9 层 / 4 叉 6 层 / 8 叉 4 层 各建 2144 节点 (test_scenario_builder.py)
+- ? compute_monthly_pv / compute_weekly_period_pv 行为跟旧模拟器一致 (test_scenario_pv.py)
+- ? LRUDict 5 个 case (hit/eviction/访问更新/覆盖/maxsize=0) (test_scenario_cache.py)
+- ? builder 跨层递归 bug 已修, 2 叉方案 L7=256 / L8=512 / L9=1024 严格 2^k 增长 (test_scenario_consistency.py)
+- ? main.py + skills/ 0 改动 (PR1 期间不动业务路由)
+- ? pytest 21 个测试全过 (7 + 3 + 3 + 5 + 3)
+**关键 bug 修复**:
+- 旧 builder for lv 嵌套循环跨层递归: lv=2 造 L3 子后, 立即被 lv=3 迭代弹走, 导致 L7=256 但 L8=410 (少了 102)
+- 新 builder 严格按 or lv in range(1, max_lv) 一次处理一层, 弹光父队列再造子, 严格分层
+**待 PR2 验证**: 8 种报酬数字一致性 (Root 15 月累计 ,024,983 跟旧 0 差异)
+

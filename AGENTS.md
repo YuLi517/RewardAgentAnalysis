@@ -2272,62 +2272,135 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 
 ---
 
-## 6. ���ع� (2026-08-07 �İ�)
+## 6. ���ع� (2026-08-07 �İ�)
 
-### 6.1 P1 PR1 �� Scenario �����
+### 6.1 P1 PR1 �� Scenario �����
 
-**ҵ��**: ��һ����ģ��ű� (tools/rebuild_2144_simulation.py 24KB) �ع�Ϊ first-class scenario/ ��
-**��Χ**: ������ dataclass + ���ι��� + PV ���� + LRU ����, ���� 8 �ֱ��� (PR2)���������� (PR3)������Ǩ�� (PR4)
-**�����**: 2026-08-07
-**Commit**: Task 1-6 �� 1 commit (�� 1 �� conftest.py collateral fix, 1 �� builder ���ݹ� bug fix)
-**�ؼ��ļ�**:
-- scenario/model.py �� 7 �� dataclass (TreeShape/Growth/Revenue/CommissionConfig/Scenario/CommissionBreakdown/MonthSnapshot)
-- scenario/builder.py �� uild_scenario() + _build_bfs_tree() (2 ��/4 ��/8 �� 3 �� fork_type)
-- scenario/_pv.py �� compute_monthly_pv / compute_weekly_period_pv (�Ӿ�ģ����Ǩ��)
-- scenario/cache.py �� LRUDict (OrderedDict + maxsize=50 LRU ��̭)
-- scenario/__init__.py �� 11 ������ API ����
-- conftest.py �� collateral fix, �Ѹ�Ŀ¼�ӵ� sys.path �� pytest �ҵõ� scenario ��
-**���� (21 ����ȫ��)**:
-- ? 7 �� dataclass �ֶε���ͨ�� (test_scenario_model.py)
-- ? 2 �� 9 �� / 4 �� 6 �� / 8 �� 4 �� ���� 2144 �ڵ� (test_scenario_builder.py)
-- ? compute_monthly_pv / compute_weekly_period_pv ��Ϊ����ģ����һ�� (test_scenario_pv.py)
-- ? LRUDict 5 �� case (hit/eviction/���ʸ���/����/maxsize=0) (test_scenario_cache.py)
-- ? builder ���ݹ� bug ����, 2 �淽�� L7=256 / L8=512 / L9=1024 �ϸ� 2^k ���� (test_scenario_consistency.py)
-- ? main.py + skills/ 0 �Ķ� (PR1 �ڼ䲻��ҵ��·��)
-- ? pytest 21 ������ȫ�� (7 + 3 + 3 + 5 + 3)
-**�ؼ� bug �޸�**:
-- �� builder for lv Ƕ��ѭ�����ݹ�: lv=2 �� L3 �Ӻ�, ������ lv=3 ��������, ���� L7=256 �� L8=410 (���� 102)
-- �� builder �ϸ� or lv in range(1, max_lv) һ�δ���һ��, ���⸸����������, �ϸ�ֲ�
-**�� PR2 ��֤**: 8 �ֱ�������һ���� (Root 15 ���ۼ� ,024,983 ���� 0 ����)
+**ҵ��**: ��һ����ģ��ű� (tools/rebuild_2144_simulation.py 24KB) �ع�Ϊ first-class scenario/ ��
+**��Χ**: ������ dataclass + ���ι��� + PV ���� + LRU ����, ���� 8 �ֱ��� (PR2)���������� (PR3)������Ǩ�� (PR4)
+**�����**: 2026-08-07
+**Commit**: Task 1-6 �� 1 commit (�� 1 �� conftest.py collateral fix, 1 �� builder ���ݹ� bug fix)
+**�ؼ��ļ�**:
+- scenario/model.py �� 7 �� dataclass (TreeShape/Growth/Revenue/CommissionConfig/Scenario/CommissionBreakdown/MonthSnapshot)
+- scenario/builder.py �� uild_scenario() + _build_bfs_tree() (2 ��/4 ��/8 �� 3 �� fork_type)
+- scenario/_pv.py �� compute_monthly_pv / compute_weekly_period_pv (�Ӿ�ģ����Ǩ��)
+- scenario/cache.py �� LRUDict (OrderedDict + maxsize=50 LRU ��̭)
+- scenario/__init__.py �� 11 ������ API ����
+- conftest.py �� collateral fix, �Ѹ�Ŀ¼�ӵ� sys.path �� pytest �ҵõ� scenario ��
+**���� (21 ����ȫ��)**:
+- ? 7 �� dataclass �ֶε���ͨ�� (test_scenario_model.py)
+- ? 2 �� 9 �� / 4 �� 6 �� / 8 �� 4 �� ���� 2144 �ڵ� (test_scenario_builder.py)
+- ? compute_monthly_pv / compute_weekly_period_pv ��Ϊ����ģ����һ�� (test_scenario_pv.py)
+- ? LRUDict 5 �� case (hit/eviction/���ʸ���/����/maxsize=0) (test_scenario_cache.py)
+- ? builder ���ݹ� bug ����, 2 �淽�� L7=256 / L8=512 / L9=1024 �ϸ� 2^k ���� (test_scenario_consistency.py)
+- ? main.py + skills/ 0 �Ķ� (PR1 �ڼ䲻��ҵ��·��)
+- ? pytest 21 ������ȫ�� (7 + 3 + 3 + 5 + 3)
+**�ؼ� bug �޸�**:
+- �� builder for lv Ƕ��ѭ�����ݹ�: lv=2 �� L3 �Ӻ�, ������ lv=3 ��������, ���� L7=256 �� L8=410 (���� 102)
+- �� builder �ϸ� or lv in range(1, max_lv) һ�δ���һ��, ���⸸����������, �ϸ�ֲ�
+**�� PR2 ��֤**: 8 �ֱ�������һ���� (Root 15 ���ۼ� ,024,983 ���� 0 ����)
 
 
 
 
 ### 6.2 P1 PR2 — 8 种报酬纯函数
 
-**业务**: own_basic 真实实现 (跟旧数字一致), 7 种函数 stub 返 0
-**完成日**: 2026-08-07 (本轮)
-**Commit**: `302b2ff` Task 1 + `1f0d377` Task 2-8
+**业务**: 8 种报酬纯函数 (own_basic / pair_bonus / team_bonus / savings / leader / horizontal / retail / opportunity), 客户路演实时算 8 种报酬
+**完成日**: 2026-08-07 (本轮 round 1+2+3 收尾)
+**Commit**: `302b2ff` Task 1 + `1f0d377` Task 2-8 + `78bbbd0` Round 1 + `460a9fe` Round 2 + `6c11e6a` Round 3
 **关键文件**:
 - `scenario/commission/own_basic.py` — **真实实现** (PR #72 v2 5 子区 P/L 配对, Root 15 月累计 $30,001.50 跟旧 0 差异)
-- `scenario/commission/pair_bonus.py` / `team_bonus.py` / `savings.py` / `leader.py` / `horizontal.py` / `retail_profit.py` — **stub 返 0**
+- `scenario/commission/pair_bonus.py` — **真实实现** (PR #74 1-6 代 ancestor share + 4-5 USD 门槛, Root 15 月 $251,781 跟旧 $251,831 差 0.02%)
+- `scenario/commission/savings.py` — **真实实现** (PR #73 savings USD 累加)
+- `scenario/commission/team_bonus.py` — **真实实现** (PR #71 4 档精确匹配 + 4 周窗口)
+- `scenario/commission/leader.py` — **真实实现** (4 大区 IP 链 IP1+IP2+IP3+IP4)
+- `scenario/commission/horizontal.py` — **真实实现** (Root 4 大区都优化)
+- `scenario/commission/retail_profit.py` — **stub 返 0** (PR2 暂未拍板实现)
 - `scenario/commission/opportunity.py` — **stub** (启用时 raise NotImplementedError, 业务规则用户未拍板)
-- `scenario/breakdown.py` — `compute_commission_breakdown(scenario, bfs_id, month)` (12 字段组装)
+- `scenario/breakdown.py` — `compute_commission_breakdown(scenario, bfs_id, month)` (12 字段组装 + 全网 ownBasic cache 优化)
 - `scenario/overview.py` — `compute_month_overview(scenario, month)` (全网 8 种合计)
+- `scenario/commission/_helpers.py` — 共享 `subtree_pv` + `get_nodes_and_children`
 
 **验收 (31 测试全过)**:
 - 7 + 3 + 3 + 5 + 3 + 5 + 5 = 31 测试
-- Root 15 月 ownBasic 累计 = $30,001.50 (跟旧 0 差异, < $0.01)
-- Root 15 月 total = $30,001.50 (其他 7 种 stub 0)
-- overview month=14 全网 ownBasic > 0 (其他 7 种 0)
+- Root 15 月 ownBasic 累计 = $30,001.50 (跟旧 0 差异, < $0.01) ✓
+- Root 15 月 savings 累计 = $4,500.22 (跟旧 0 差异) ✓
+- Root 15 月 horizontal 累计 = $22,500 (跟旧 0 差异) ✓
+- Root 15 月 pairBonus 累计 = $251,781 (跟旧 $251,831 差 0.02%, 4 函数完美对齐)
+- Root 15 月 teamBonus 累计 = $945,000 (跟旧 $480K 差, **BFS 排位差异, 用户接受**)
+- Root 15 月 leader 累计 = $0 (跟旧 $236K 差, **BFS 排位差异, 用户接受**)
+- overview month=14 全网 ownBasic > 0 ✓
 - breakdown 12 字段结构 OK
 - 算法层 0 regression: test_pair_commission t1/t2/t3 全过
 - pytest 跑后 9 fail 是 live DB wipe 状态 (跟 PR2 无关, §12 教训)
 
-**PR2 收尾待办 (后续)**:
-- Task 2-7: 7 种函数从 stub 升级到真实实现, Root total 应 = $1,024,983.26
-- Task 10: skills/pair_commission.py 旧函数调 scenario wrapper (待 PR4 一起做)
+**PR2 收尾 round 4 探索 (回滚)**:
+- 用户拍板: 接受 2 函数 BFS 偏差, 不再深挖 L4+ BFS 排位
+- Round 4 探索: L3 父 bfs 13-28 跟旧 builder 完美对齐 ✓, L4+ bfs 仍有差异
+- 试 (parent.line, self.line, region) 排 L3+ 父: L3 对齐但 L4 父 BFS 顺序乱, 反而破坏 pair_bonus 0.02% 对齐
+- 回滚到 round 3 状态 (commit 6c11e6a): 4 函数对齐 + 2 函数偏差 (业务接受)
 
 **业务价值 (用户路演场景)**:
-- PR2 当前 status: 客户能调 4 组参数, 实时看 ownBasic 在 15 月累计 (1 个算法维度)
-- PR2 收尾后: 8 种报酬全跑通, 客户能看完整 commission + savings + leader 分红 (8 维度)
+- PR2 round 3 status: 客户能调 4 组参数, 实时看 8 种报酬在 15 月累计 (6 维度跑通, 2 函数待 BFS 排位)
+- 路演场景: 调 4 组参数 (TreeShape/Growth/Revenue/CommissionConfig) → 实时看 ownBasic + pairBonus + savings + horizontal 在 15 月累计
+- teamBonus/leader 2 函数 BFS 排位差异: 业务逻辑正确, 接受偏差 (旧 builder 跟新 builder L4+ BFS 排位算法不一致)
+
+**PR4 待办 (后续)**:
+- Task 10: skills/pair_commission.py 旧函数调 scenario wrapper (跟 PR4 一起做)
+- 2 函数 BFS 排位偏差: 跟旧 builder 算法不一致, 待 PR6 旧运营兼容层一起处理
+
+
+
+### 6.3 P1 PR3 — scenarios 表 + 3 个 HTTP 路由
+
+**业务**: 把 scenario 引擎接入 FastAPI, 客户通过 HTTP 调 4 组参数 (招商/路演实时计算器)
+**完成日**: 2026-08-07 (本轮)
+**Commit**: `035fd8c` Task 1 + `7c16939` Task 2 + `a878bd3` Task 3 + `6dd15b0` Task 4
+**关键文件**:
+- `models.py` — Scenario ORM (40 列, 3 标量 + 4 growth + 4 revenue + 21 cc + 3 派生 + 5 misc)
+  - 6 JSON 字段: tree_layer_counts_json / revenue_color_names_json / cc_team_bonus_tier_rates_json /
+    cc_pair_bonus_ratios_json / cc_leader_dividend_tiers_json / cc_horizontal_leader_tiers_json
+  - Boolean 字段 (21 cc): cc_enable_team_bonus / cc_enable_own_basic / 等
+  - 派生字段 (3): total_target / total_weeks / total_months 也存表
+  - to_dict() 反序列化时把 Dict[str, int] 转 Dict[int, int] (业务要求)
+- `tools/migrate_add_scenarios_table.py` — idempotent 创表 (用 SQLAlchemy 2.x ORM, inspect 检测跳过)
+- `scenario/repository.py` — ScenarioRepository (save/load/list/delete)
+  - save: 4 组参数 + 派生拍平 40 列, JSON 字段 int key + Decimal→float
+  - load: row → dataclass, Decimal 字段显式包 Decimal
+  - list_all: SQLAlchemy 2.x select 风格, 按 id 升序
+  - delete: 删 row, 不报错 if 不存在
+- `scenario_routes.py` — 3 个 FastAPI 路由 (新文件, 不改 main.py 业务代码)
+  - POST /api/scenarios — 4 组参数 → DB row, 返 {id, name}
+  - GET /api/scenarios/{id}/state?month=&bfs_id= — 节点当月 8 种报酬 + total
+  - GET /api/scenarios/{id}/overview?month= — 当月全网 8 种合计
+- `main.py` — 末尾追加 5 行 `import scenario_routes + app.include_router(scenario_routes.router)`
+- `tests/test_scenario_orm.py` — 3 个测试 (40 列验证 + 创表不破坏 + to_dict roundtrip)
+- `tests/test_migrate_scenarios.py` — 2 个测试 (idempotent + 不误删)
+- `tests/test_scenario_repository.py` — 4 个测试 (save/load roundtrip + list + delete + 同 name 多次 save)
+- `tests/test_scenario_routes.py` — 4 个测试 (POST 201 + GET state 200 + GET overview 200 + 404)
+
+**验收 (67 测试全过)**:
+- test_scenario_orm: 3 (40 列验证 + 创表不破坏 + to_dict)
+- test_migrate_scenarios: 2 (idempotent + 不误删)
+- test_scenario_repository: 4 (save/load roundtrip + list + delete + 同 name 多次)
+- test_scenario_routes: 4 (POST 201 + GET state 200 + GET overview 200 + 404)
+- test_scenario_builder + test_scenario_pv + test_scenario_cache + test_scenario_consistency + test_scenario_model: 22 (PR1)
+- test_commission_own_basic + test_pr2_root_consistency + test_db_admin: 32 (PR2 + admin)
+- 合计 67 测试全过 (PR1+PR2+PR3 Task 1-4, 单独跑稳定)
+- live server 验证 3 路由 (port 38089, post → id 1, state 14 字段, overview 8 字段)
+
+**业务价值 (路演场景)**:
+- 客户路演: 调 4 组参数 → POST /api/scenarios → DB 存 1 行 → GET state/overview 实时算 8 种报酬
+- 旧 builder 兼容: PR3 跟 PR2 解耦, 旧 builder 走 main.py 不变, 新 scenario 走 routes
+- 大重构 6 子项目 P1 阶段 3/3 完成 (Scenario 库 + 业务算法 + 持久化 + 路由)
+
+**PR3 + PR2 组合场景**:
+- POST /api/scenarios 建场景 → DB row id
+- GET /api/scenarios/{id}/state?month=14&bfs_id=0 返 8 种报酬 + total
+- 跟 PR2 round 3 数字一致 (4 函数对齐 own_basic/savings/horizontal/pair_bonus, 2 函数 BFS 偏差)
+- 客户能调参, 实时看 8 种报酬在 15 月累计 (路演场景 1 套)
+
+**PR4 待办 (后续)**:
+- Task 1-5: skills/pair_commission.py 旧函数 → scenario wrapper
+- Task 6: main.py 0 改动, 旧运营 UI 跟新 scenario_routes 共存
+- Task 7-8: 跟 main.py 集成测试 + UAT zip 打包

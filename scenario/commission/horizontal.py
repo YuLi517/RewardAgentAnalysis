@@ -48,6 +48,36 @@ def compute_horizontal_for_node(scenario: Scenario, bfs_id: int, month: int) -> 
     return (Decimal(shares) * Decimal(str(cc.horizontal_leader_share_usd))).quantize(Decimal("0.01"))
 
 
+def compute_horizontal_table_for_month(scenario: Scenario, month: int) -> Dict[int, Decimal]:
+    """P1.5: 1 次算全网 2144 节点 horizontal_leader
+
+    关键优化:
+    - 1 次算 horizontal_leader_dividend (根节点拿, 其他返 0)
+    - 1 次遍历 2144 节点, root 给值, 其他 0
+    - LRU 缓存 (compute_horizontal_table_for_month._cache)
+    """
+    cache_key = ("horizontal_table", id(scenario), month)
+    if not hasattr(compute_horizontal_table_for_month, "_cache"):
+        compute_horizontal_table_for_month._cache = {}  # type: ignore
+    cache = compute_horizontal_table_for_month._cache  # type: ignore
+    if cache_key in cache:
+        return cache[cache_key]
+
+    from scenario.builder import _build_bfs_tree
+    nodes = _build_bfs_tree(scenario.tree_shape)
+    # 1 次算 horizontal 状态 (root 拿, 其他 0)
+    root_value = compute_horizontal_for_node(scenario, bfs_id=0, month=month)
+
+    result: Dict[int, Decimal] = {}
+    for bfs_id in nodes.keys():
+        if bfs_id == 0:
+            result[bfs_id] = root_value
+        else:
+            result[bfs_id] = Decimal("0.00")
+    cache[cache_key] = result
+    return result
+
+
 def compute_horizontal_leader_dividend(scenario: Scenario, month: int) -> dict:
     """PR2 收尾: 横向分红全月状态"""
     cc = scenario.commission_config

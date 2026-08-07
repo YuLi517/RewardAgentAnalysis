@@ -61,6 +61,44 @@ def _resolve_ip_bfs(scenario: Scenario, region: int, ip_level: int) -> Optional[
     return ip_bfs
 
 
+def compute_leader_dividend_table_for_month(scenario: Scenario, month: int) -> Dict[int, Decimal]:
+    """P1.5: 1 次算全网 2144 节点 leader_dividend (基于 IP 链状态)
+
+    关键优化:
+    - 1 次算 IP 链 status (compute_leader_dividend_status 内部已 LRU, 但 2144 次调会重复)
+    - 1 次遍历 2144 节点, IP 节点拿对应 shares × share_usd, 其他 0
+    - LRU 缓存 (compute_leader_dividend_table_for_month._cache)
+    """
+    cache_key = ("leader_table", id(scenario), month)
+    if not hasattr(compute_leader_dividend_table_for_month, "_cache"):
+        compute_leader_dividend_table_for_month._cache = {}  # type: ignore
+    cache = compute_leader_dividend_table_for_month._cache  # type: ignore
+    if cache_key in cache:
+        return cache[cache_key]
+
+    from scenario.builder import _build_bfs_tree
+    nodes = _build_bfs_tree(scenario.tree_shape)
+    share_usd = Decimal(str(scenario.commission_config.leader_dividend_share_usd))
+
+    # 1 次算 IP 链 status (跟 compute_leader_for_node 内部调一样)
+    status = compute_leader_dividend_status(scenario, month)
+
+    # 构 {ip_bfs: shares} map
+    ip_shares_map: Dict[int, int] = {}
+    for region, ip_level, top1_pv, top2_pv, ok, shares in status["ip_status"]:
+        ip_bfs = _resolve_ip_bfs(scenario, region, ip_level)
+        if ip_bfs is not None and ok:
+            ip_shares_map[ip_bfs] = shares
+
+    result: Dict[int, Decimal] = {}
+    for bfs_id in nodes.keys():
+        shares = ip_shares_map.get(bfs_id, 0)
+        result[bfs_id] = (Decimal(shares) * share_usd).quantize(Decimal("0.01"))
+
+    cache[cache_key] = result
+    return result
+
+
 def compute_leader_dividend_status(scenario: Scenario, month: int) -> dict:
     """算 month 月 4 大区 IP 链状态
     Returns: {

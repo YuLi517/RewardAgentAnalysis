@@ -75,3 +75,64 @@ def compute_team_bonus_v3_window(scenario: Scenario, bfs_id: int, month: int) ->
 def compute_team_bonus_for_node(scenario: Scenario, bfs_id: int, month: int) -> Decimal:
     """单节点 API: 跟 v3_window 一样 (收尾后统一接口)"""
     return compute_team_bonus_v3_window(scenario, bfs_id, month)
+
+
+def compute_team_bonus_table_for_month(scenario: Scenario, month: int) -> Dict[int, Decimal]:
+    """P1.5: 1 次算 month 月全网 2144 节点 team_bonus (跟 own_basic 模式一致)
+
+    关键优化 (跟 own_basic_table_for_month 一样):
+    - 1 次算 weekly_period_pv (代替 N 次)
+    - 1 次遍历 2144 节点, 每个节点走 5 子区 (slot 1-5) 收 period_pv
+    - 4 周窗口: 只算 month == node.join_month 的 PV
+    - LRU 缓存 (compute_team_bonus_table_for_month._cache)
+    """
+    cache_key = ("team_bonus_table", id(scenario), month)
+    if not hasattr(compute_team_bonus_table_for_month, "_cache"):
+        compute_team_bonus_table_for_month._cache = {}  # type: ignore
+    cache = compute_team_bonus_table_for_month._cache  # type: ignore
+    if cache_key in cache:
+        return cache[cache_key]
+
+    cc = scenario.commission_config
+    tier_rates = cc.team_bonus_tier_rates
+    if not tier_rates:
+        # 没 tier_rates, 全网返 0
+        from scenario.builder import _build_bfs_tree
+        nodes = _build_bfs_tree(scenario.tree_shape)
+        result = {bid: Decimal("0.0000") for bid in nodes.keys()}
+        cache[cache_key] = result
+        return result
+
+    # 1 次算 weekly_period_pv
+    total_weeks = (scenario.total_months + 1) * 4
+    _, weekly_period_pv = compute_weekly_period_pv(scenario, total_weeks)
+
+    nodes, children_map = get_nodes_and_children(scenario)
+    result: Dict[int, Decimal] = {}
+
+    def _walk_collect(bfs_id: int, pvs: List[int]):
+        """递归: 4 周窗口内 own period_pv 收集"""
+        node = nodes[bfs_id]
+        if month - node["join_month"] >= 1:
+            return  # 出窗口
+        own = weekly_period_pv[node["join_week"]].get(bfs_id, 0) if 0 <= node["join_week"] < len(weekly_period_pv) else 0
+        if own > 0:
+            pvs.append(own)
+        for c in children_map.get(bfs_id, []):
+            if nodes[c]["slot_line_id"] <= 5:
+                _walk_collect(c, pvs)
+
+    for bfs_id in nodes.keys():
+        pvs: List[int] = []
+        for c in children_map.get(bfs_id, []):
+            if nodes[c]["slot_line_id"] <= 5:
+                _walk_collect(c, pvs)
+        bonus = Decimal("0")
+        for pv in pvs:
+            rate = tier_rates.get(pv, 0.0)
+            if rate > 0:
+                bonus += Decimal(int(pv)) * Decimal(str(rate))
+        result[bfs_id] = bonus.quantize(Decimal("0.0001"))
+
+    cache[cache_key] = result
+    return result

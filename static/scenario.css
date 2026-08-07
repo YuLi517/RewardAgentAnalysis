@@ -176,3 +176,86 @@ body {
 }
 .p3-toast.error { background: #EF4444; color: #fff; }
 .p3-toast.success { background: #5AA4AE; color: #fff; }
+
+/* === P3 PR2: 热图样式 === */
+.p3-heatmap {
+  margin-top: 16px;
+  padding: 16px;
+  background: #1a1a2e;
+  border-radius: 8px;
+}
+.p3-heatmap h2 {
+  color: #5AA4AE;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.heatmap-container {
+  background: #0a0a14;
+  border-radius: 4px;
+  padding: 8px;
+  overflow-x: auto;
+}
+#heatmap-canvas {
+  display: block;
+}
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #758A99;
+  margin-top: 8px;
+}
+.legend-low, .legend-high { color: #D6ECF0; }
+.legend-grad {
+  flex: 0 0 100px;
+  height: 8px;
+  background: linear-gradient(to right,
+    rgba(90, 164, 174, 0.1), rgba(90, 164, 174, 1.0));
+  border-radius: 4px;
+}
+.heatmap-tooltip {
+  position: fixed;
+  background: #1a1a2e;
+  color: #D6ECF0;
+  border: 1px solid #5AA4AE;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 100;
+}
+.month-detail {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1a1a2e;
+  color: #D6ECF0;
+  border: 1px solid #5AA4AE;
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 360px;
+  z-index: 101;
+}
+.month-detail h3 {
+  color: #5AA4AE;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.month-detail-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.month-detail-body .field { color: #758A99; }
+.month-detail-body .val { color: #F0C239; font-family: monospace; }
+.month-detail-close {
+  background: transparent;
+  color: #C0EBD7;
+  border: 1px solid #758A99;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}

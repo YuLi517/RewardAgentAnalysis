@@ -72,6 +72,26 @@
         </div>
 
         <div id="toast" class="p3-toast" style="display:none"></div>
+
+        <!-- ★ P3 PR2: 8 种报酬 × 14 月 热图 (提交后渲染) -->
+        <section id="heatmap" class="p3-heatmap" style="display:none">
+          <h2>📊 8 种报酬 × 14 月累计热图</h2>
+          <div class="heatmap-container">
+            <canvas id="heatmap-canvas" width="500" height="320"></canvas>
+          </div>
+          <div class="heatmap-legend">
+            <span class="legend-low">低</span>
+            <span class="legend-grad"></span>
+            <span class="legend-high">高</span>
+            <span class="legend-hint">(颜色深 = 金额高)</span>
+          </div>
+          <div id="heatmap-tooltip" class="heatmap-tooltip" style="display:none"></div>
+          <div id="month-detail" class="month-detail" style="display:none">
+            <h3>📅 月份详情</h3>
+            <div class="month-detail-body">加载中...</div>
+            <button class="month-detail-close">✕ 关闭</button>
+          </div>
+        </section>
       </div>
     </div>
   </div>

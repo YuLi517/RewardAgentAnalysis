@@ -2520,3 +2520,44 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 - P4 方案库 + 对比
 - P5 商业计划书导出
 - P6 旧运营兼容层
+
+
+### 6.8 P4 — 方案库 + URL 分享 (独立 scenario_library.html)
+
+**业务**: 调好的 scenario 保存为方案, URL ?id= 分享给客户
+**完成日**: 2026-08-07
+**Commit 链**: spec+plan 07cad13 + Task 1 (HTML+CSS) + Task 2 (JS) + 本 2 commit
+**关键文件**:
+- `static/scenario_library.html` — 独立页: 侧栏 scenario 列表 + 中间详情 + 分享按钮
+- `static/scenario_library.js` — list + 详情 + URL 参数 + 复制分享
+- `static/scenario_library.css` — 复 PR1 border-beam 样式
+- `static/index.html` — 主菜单加 "📚 Scenario 库" 入口
+- `AGENTS.md` — §6.8 状态记录 (本 task)
+
+**验收 (3 task 验证)**:
+- Task 1 前端 HTML+CSS: 独立页 2 栏布局 + 4 border-beam + 8 卡片
+- Task 2 前端 JS: list + 详情 + URL ?id= + 复制分享
+- Task 3 主菜单入口 + AGENTS.md §6.8
+
+**业务价值**:
+- 客户调好方案, 复制 URL 发客户
+- 客户打开链接看到同一方案, 不用重述参数
+- 0 后端改动 (复用 PR3 列表 + load 端点)
+
+**分享 URL 格式**:
+`http://host:port/static/scenario_library.html?id={scenario_id}`
+- 0 id: 列表显示, 详情空
+- 有 id: 自动加载详情, 侧栏高亮
+
+**大重构 P1 阶段收尾**:
+- P1 4 PR (PR1-4) 全部收尾 (Scenario 库 + 8 种报酬 + 持久化 + 路由)
+- P2 10 commit 收尾 (8 种报酬 + breakdown + overview)
+- P3 19 commit 收尾 (scenario.html + 热图 + scenario_compare.html)
+- P4 5 commit 收尾 (scenario_library.html)
+- 总 50+ commit, 大重构 P1 阶段 收尾, 准备 release
+
+**后续 (P5 拍板)**:
+- 商业计划书 PDF 导出
+- 短链接 + QR 码
+- 多用户隔离
+- 方案重命名/删除

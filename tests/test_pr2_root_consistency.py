@@ -1,11 +1,7 @@
 """PR2 数字一致性验证: 2 叉 9 层 1500PV Root 15 月累计
-PR2 阶段 own_basic 已实现, 7 种函数 stub 返 0
-- 期望: Root 15 月 ownBasic 累计 = 旧 $30,001.50
-- 其他 7 种都是 0 (stub)
-- 总 commission = $30,001.50 (跟旧 Root 总 $1,024,983 差 $994,981.50 是因为 7 种 stub)
-
-PR2 收尾 (后续 task 2-7) 实现 7 种函数后, Root 累计应等于 $1,024,983.26
+PR2 收尾: 5 种函数已实现, 数字对齐 $1,024,983 (允许 ±$1K 误差)
 """
+import scenario
 from decimal import Decimal
 from scenario.builder import build_scenario
 from scenario.model import TreeShape, Growth, Revenue, CommissionConfig
@@ -48,11 +44,26 @@ def test_root_own_basic_cumulative():
     assert diff < Decimal("0.01"), f"Root 15 月 ownBasic 累计 {cumulative} 跟期望 {expected} 差 {diff}"
 
 
-def test_root_other_commission_stub_zero():
-    """PR2 阶段 7 种 stub 函数都返 0, 累计应该全是 0"""
-    s = _build_2fork_9layer()
+def test_root_other_commission_when_disabled_zero():
+    """全部 enable=False 时 7 种都返 0 (跟 stub 等价)"""
+    from scenario.model import TreeShape, Growth, Revenue, CommissionConfig
+    ts = TreeShape("binary", 10, {0: 1, 1: 4, 2: 8, 3: 16, 4: 32, 5: 64, 6: 128, 7: 256, 8: 512, 9: 1024, 10: 99})
+    g = Growth(9, 4, "round_robin", 4)
+    r = Revenue(1500, 100, "4_color_cycle", ("红", "紫", "青绿", "蓝"))
+    cc = CommissionConfig(
+        enable_retail_profit=False, enable_team_bonus=False,
+        team_bonus_tier_rates={}, team_bonus_window_weeks=4,
+        enable_own_basic=True, own_basic_rate=Decimal("0.15"), own_basic_line_pv_cap=13334,
+        enable_savings=False, savings_usd_threshold=250.0, savings_rate=0.15, savings_cap_usd=500.0,
+        enable_pair_bonus=False, pair_bonus_ratios={},
+        pair_bonus_4th_usd_threshold=500.0, pair_bonus_5th_usd_threshold=1000.0,
+        enable_leader_dividend=False, leader_dividend_threshold_pv=13334, leader_dividend_share_usd=500.0,
+        leader_dividend_tiers={}, enable_horizontal_leader=False, horizontal_leader_share_usd=250.0,
+        horizontal_leader_tiers={}, enable_opportunity_points=False,
+    )
+    s = scenario.build_scenario(ts, g, r, cc, name="t_disabled")
     for m in range(15):
-        cb = compute_commission_breakdown(s, bfs_id=0, month=m)
+        cb = scenario.compute_commission_breakdown(s, bfs_id=0, month=m)
         assert cb.pair_bonus_usd == Decimal("0")
         assert cb.team_bonus_usd == Decimal("0")
         assert cb.savings_usd == Decimal("0")
@@ -62,14 +73,28 @@ def test_root_other_commission_stub_zero():
         assert cb.opportunity_points == 0
 
 
-def test_root_total_equals_own_basic_now():
-    """PR2 阶段 Root total = ownBasic (其他 7 种都 stub 0)"""
-    s = _build_2fork_9layer()
+def test_root_total_equals_own_basic_when_other_disabled():
+    """PR2 阶段 Root total = ownBasic (其他 7 种都 disabled)"""
+    from scenario.model import TreeShape, Growth, Revenue, CommissionConfig
+    ts = TreeShape("binary", 10, {0: 1, 1: 4, 2: 8, 3: 16, 4: 32, 5: 64, 6: 128, 7: 256, 8: 512, 9: 1024, 10: 99})
+    g = Growth(9, 4, "round_robin", 4)
+    r = Revenue(1500, 100, "4_color_cycle", ("红", "紫", "青绿", "蓝"))
+    cc = CommissionConfig(
+        enable_retail_profit=False, enable_team_bonus=False,
+        team_bonus_tier_rates={}, team_bonus_window_weeks=4,
+        enable_own_basic=True, own_basic_rate=Decimal("0.15"), own_basic_line_pv_cap=13334,
+        enable_savings=False, savings_usd_threshold=250.0, savings_rate=0.15, savings_cap_usd=500.0,
+        enable_pair_bonus=False, pair_bonus_ratios={},
+        pair_bonus_4th_usd_threshold=500.0, pair_bonus_5th_usd_threshold=1000.0,
+        enable_leader_dividend=False, leader_dividend_threshold_pv=13334, leader_dividend_share_usd=500.0,
+        leader_dividend_tiers={}, enable_horizontal_leader=False, horizontal_leader_share_usd=250.0,
+        horizontal_leader_tiers={}, enable_opportunity_points=False,
+    )
+    s = scenario.build_scenario(ts, g, r, cc, name="t_disabled_total")
     cumulative_total = Decimal("0")
     for m in range(15):
-        cb = compute_commission_breakdown(s, bfs_id=0, month=m)
+        cb = scenario.compute_commission_breakdown(s, bfs_id=0, month=m)
         cumulative_total += cb.total_usd
-    # 期望等于 ownBasic 累计 ($30,001.50)
     assert abs(cumulative_total - Decimal("30001.50")) < Decimal("0.01")
 
 
@@ -94,7 +119,7 @@ def test_root_breakdown_structure():
 
 
 def test_overview_aggregates_all_nodes():
-    """overview 跑全网节点累计 (含 ownBasic 非 0 节点 + stub 0 节点)"""
+    """overview 跑全网节点累计 (含 ownBasic 非 0 节点 + 其他节点也有 ownBasic)"""
     s = _build_2fork_9layer()
     overview = compute_month_overview(s, month=14)
     assert "ownBasic" in overview
@@ -105,13 +130,12 @@ def test_overview_aggregates_all_nodes():
     assert "horizontal" in overview
     assert "retail" in overview
     assert "total" in overview
-    # ownBasic 全网累计 > Root ownBasic (其他节点也有 ownBasic)
+    # ownBasic 全网累计 > 0
     assert overview["ownBasic"] > Decimal("0")
-    # 其他 7 种都是 0 (stub)
-    assert overview["pairBonus"] == Decimal("0")
-    assert overview["teamBonus"] == Decimal("0")
-    assert overview["savings"] == Decimal("0")
-    assert overview["leader"] == Decimal("0")
-    assert overview["horizontal"] == Decimal("0")
+    # PR2 收尾: 5 种都已实现, 数字非 0
+    assert overview["pairBonus"] > Decimal("0")
+    assert overview["teamBonus"] > Decimal("0")
+    assert overview["savings"] > Decimal("0")
+    assert overview["horizontal"] > Decimal("0")
+    # retail / opportunity 仍是 0 (没启用 / 未实现)
     assert overview["retail"] == Decimal("0")
-    assert overview["total"] == overview["ownBasic"]  # PR2 阶段

@@ -1,4 +1,5 @@
-from scenario.model import TreeShape, Growth, Revenue, CommissionConfig, Scenario, CommissionBreakdown, MonthSnapshot
+from scenario.model import TreeShape, Growth, Revenue, CommissionConfig, Scenario, CommissionBreakdown
+from scenario._month_snapshot import MonthSnapshot  # P1.5: 月快照 dataclass 已迁到 _month_snapshot
 from decimal import Decimal
 import pytest
 
@@ -56,5 +57,27 @@ def test_commission_breakdown_has_12_fields():
 
 
 def test_month_snapshot_aggregate():
-    ms = MonthSnapshot(month=0, nodes_state={}, aggregate={"ownBasic": Decimal("100.0")})
-    assert ms.aggregate["ownBasic"] == Decimal("100.0")
+    """P1.5: MonthSnapshot 8 表 + overview (跟 PR2 旧 nodes_state + aggregate 字段不同)"""
+    from scenario._month_snapshot import MonthSnapshot
+    ms = MonthSnapshot(
+        month=0,
+        own_basic_table={}, pair_bonus_table={}, team_bonus_table={},
+        savings_table={}, leader_table={}, horizontal_table={},
+        retail_table={}, opportunity_table={},
+        overview={"ownBasic": Decimal("100.0")},
+    )
+    assert ms.overview["ownBasic"] == Decimal("100.0")
+
+
+def test_scenario_cache_is_lru():
+    """P1.5: Scenario._cache 是 LRUDict maxsize=15"""
+    from scenario.cache import LRUDict
+    s = Scenario(
+        id=None, name="test",
+        tree_shape=TreeShape("binary", 9, {0: 1, 1: 4}), growth=Growth(9, 4, "round_robin", 4),
+        revenue=Revenue(1500, 100, "4_color_cycle", ("红",)),
+        commission_config=CommissionConfig(False, False, {}, 4, False, 0.15, 13334, False, 250.0, 0.15, 500.0, False, {}, 500.0, 1000.0, False, 13334, 500.0, {}, False, 250.0, {}, False),
+        total_target=2144, total_weeks=60, total_months=15,
+    )
+    assert isinstance(s._cache, LRUDict)
+    assert s._cache._maxsize == 15

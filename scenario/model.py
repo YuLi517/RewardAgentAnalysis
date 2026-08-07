@@ -1,8 +1,12 @@
-"""scenario 库 dataclass 定义 (PR1)"""
+"""scenario 库 dataclass 定义 (PR1 + P1.5 缓存)"""
 from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    from scenario._month_snapshot import MonthSnapshot
+    from scenario.cache import LRUDict
 
 
 @dataclass(frozen=True)
@@ -61,7 +65,7 @@ class CommissionConfig:
 
 @dataclass
 class Scenario:
-    """场景容器: 4 组参数 + 派生 + LRU 缓存"""
+    """场景容器: 4 组参数 + 派生 + LRU 月级缓存 (P1.5)"""
     id: Optional[int]
     name: str
     tree_shape: TreeShape
@@ -71,8 +75,18 @@ class Scenario:
     total_target: int
     total_weeks: int
     total_months: int
-    # LRU 缓存: month → MonthSnapshot (非 frozen)
-    _cache: Dict[int, "MonthSnapshot"] = field(default_factory=dict, repr=False, compare=False)
+    # P1.5: LRU 缓存: month → MonthSnapshot (8 表 + 总览)
+    # maxsize=15: 14 月全缓存 + 1 预热, 2 次查询 0 延迟
+    # 引入延迟导入避免循环 (model.py 不 import 任何 commission/* 业务)
+    _cache: "LRUDict[int, MonthSnapshot]" = field(
+        default=None, repr=False, compare=False
+    )
+
+    def __post_init__(self):
+        # LRUDict 不能在 default_factory 里直接用 (前置引用), 延后初始化
+        if self._cache is None:
+            from scenario.cache import LRUDict
+            object.__setattr__(self, "_cache", LRUDict(maxsize=15))
 
 
 @dataclass(frozen=True)
@@ -94,9 +108,10 @@ class CommissionBreakdown:
     cumulative_to_date_usd: Decimal
 
 
-@dataclass(frozen=True)
-class MonthSnapshot:
-    """某月全网所有节点状态 (缓存粒度)"""
-    month: int
-    nodes_state: Dict[int, CommissionBreakdown]
-    aggregate: Dict[str, Decimal]
+# MonthSnapshot 已迁到 scenario/_month_snapshot.py (P1.5 重构: 旧 nodes_state + aggregate → 新 8 表 + overview)
+# 通过 scenario/__init__.py re-export 保持向后兼容
+__all__ = [
+    "TreeShape", "Growth", "Revenue", "CommissionConfig",
+    "Scenario", "CommissionBreakdown",
+    "MonthSnapshot",  # re-export from scenario._month_snapshot
+]

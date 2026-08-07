@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections import deque
 from typing import Dict, List, Optional, Tuple
 
-from scenario.model import Scenario, TreeShape, Growth, Revenue, CommissionConfig, MonthSnapshot
+from scenario.model import Scenario, TreeShape, Growth, Revenue, CommissionConfig
 
 
 def _build_bfs_tree(tree_shape: TreeShape, growth: Optional[Growth] = None) -> Dict[int, dict]:

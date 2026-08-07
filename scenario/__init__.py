@@ -1,8 +1,9 @@
-"""scenario 库 — P1 场景核心引擎 (PR1+PR2)"""
+"""scenario 库 — P1 场景核心引擎 (PR1+PR2+P1.5)"""
 from scenario.model import (
     TreeShape, Growth, Revenue, CommissionConfig,
-    Scenario, CommissionBreakdown, MonthSnapshot,
+    Scenario, CommissionBreakdown,
 )
+from scenario._month_snapshot import MonthSnapshot  # P1.5: 8 表 + overview (新结构, 从 _month_snapshot import)
 from scenario.builder import build_scenario
 from scenario._pv import compute_monthly_pv, compute_weekly_period_pv
 from scenario.cache import LRUDict

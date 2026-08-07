@@ -46,7 +46,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import (
-    String, Integer, Text, Float, ForeignKey, Index,
+    String, Integer, Text, Float, Boolean, ForeignKey, Index,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, declarative_base
 
@@ -463,3 +463,151 @@ class OrderItem(Base):
             f"<OrderItem id={self.id} name={self.name!r} "
             f"required_qty={self.required_qty} stock={self.current_stock}>"
         )
+
+
+# ============================================================
+# ★ 2026-08-07 P1 PR3 Task 1: Scenario ORM (40 列, scenarios 表)
+#   - 大重构 (2026-08-07 拍板) — 运营系统改造成"分析推理系统" (招商/路演实时计算器)
+#   - 4 组参数 (TreeShape/Growth/Revenue/CommissionConfig) 拍平 40 列存 SQLite
+#   - 客户路演实时调参: POST /api/scenarios 创建, 2 × GET 读
+#   - 派生字段 (total_target/total_weeks/total_months) 也存表 (避免重复算)
+#   - JSON 字段 (tree_layer_counts_json/cc_team_bonus_tier_rates_json/cc_pair_bonus_ratios_json/
+#     cc_leader_dividend_tiers_json/cc_horizontal_leader_tiers_json/revenue_color_names_json)
+#     6 个 JSON 字段 + 34 个标量 = 40 列
+# ============================================================
+class Scenario(Base):
+    """场景: 4 组参数拍平 40 列, 客户路演实时调参用
+
+    业务定位 (P1 大重构):
+      - 客户: 调 4 组参数, 实时看 8 种报酬在 X 月累计
+      - 路演: 1 次 session 多 scenarios 对比, 选最优
+      - PR3: 持久化 (这表) + 3 个 FastAPI 路由
+
+    设计要点:
+      1. 4 个嵌套 dataclass (TreeShape/Growth/Revenue/CommissionConfig) 拍平 40 列
+      2. JSON 字段用 Text 存 (SQLite 原生支持, 避免 JSONB 复杂度)
+      3. Boolean 字段存 0/1 (SQLAlchemy 自动转)
+      4. 派生字段 (total_target/total_weeks/total_months) 也存, 避免重复算
+      5. 缓存绑定到 id(scenario_instance) 不是 row id, 防内存泄漏
+    """
+    __tablename__ = "scenarios"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    # ★ created_at 用 String(32) 存 ISO ts (PR3 plan 拍板, 跟其他 Float 风格不同)
+    #   - 业务: 客户看场景列表按创建时间排序, 字符串比 Float 易读
+    created_at: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    # ============== tree_shape (4 列) ==============
+    tree_fork_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    tree_max_level: Mapped[int] = mapped_column(Integer, nullable=False)
+    tree_layer_counts_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # ============== growth (4 列) ==============
+    growth_nodes_per_region_per_week: Mapped[int] = mapped_column(Integer, nullable=False)
+    growth_n_regions: Mapped[int] = mapped_column(Integer, nullable=False)
+    growth_join_strategy: Mapped[str] = mapped_column(String(32), nullable=False)
+    growth_weeks_per_month: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # ============== revenue (4 列) ==============
+    revenue_initial_pv: Mapped[int] = mapped_column(Integer, nullable=False)
+    revenue_monthly_renew_pv: Mapped[int] = mapped_column(Integer, nullable=False)
+    revenue_color_rule: Mapped[str] = mapped_column(String(32), nullable=False)
+    revenue_color_names_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # ============== commission_config (21 列) ==============
+    cc_enable_retail_profit: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    cc_enable_team_bonus: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    cc_team_bonus_tier_rates_json: Mapped[str] = mapped_column(Text, nullable=False)
+    cc_team_bonus_window_weeks: Mapped[int] = mapped_column(Integer, nullable=False)
+    cc_enable_own_basic: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    cc_own_basic_rate: Mapped[float] = mapped_column(Float, nullable=False)
+    cc_own_basic_line_pv_cap: Mapped[int] = mapped_column(Integer, nullable=False)
+    cc_enable_savings: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    cc_savings_usd_threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    cc_savings_rate: Mapped[float] = mapped_column(Float, nullable=False)
+    cc_savings_cap_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    cc_enable_pair_bonus: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    cc_pair_bonus_ratios_json: Mapped[str] = mapped_column(Text, nullable=False)
+    cc_pair_bonus_4th_usd_threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    cc_pair_bonus_5th_usd_threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    cc_enable_leader_dividend: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    cc_leader_dividend_threshold_pv: Mapped[int] = mapped_column(Integer, nullable=False)
+    cc_leader_dividend_share_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    cc_leader_dividend_tiers_json: Mapped[str] = mapped_column(Text, nullable=False)
+    cc_enable_horizontal_leader: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    cc_horizontal_leader_share_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    cc_horizontal_leader_tiers_json: Mapped[str] = mapped_column(Text, nullable=False)
+    cc_enable_opportunity_points: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+    # ============== 派生 (3 列) ==============
+    total_target: Mapped[int] = mapped_column(Integer, nullable=False)
+    total_weeks: Mapped[int] = mapped_column(Integer, nullable=False)
+    total_months: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    def to_dict(self) -> dict:
+        """侧栏列表 / 详情页用的字段拍平 (含 JSON 反序列化)
+        业务注意: JSON object key 总是 string, 但 TreeShape/Growth 业务字段要求 int key,
+        这里在 to_dict 时把 layer_counts / *_tier_rates / *_tiers 的 key 统一转 int,
+        保持跟 scenario/builder.py 输入一致 (Dict[int, int] 而不是 Dict[str, int])
+        """
+        import json
+        # layer_counts: Dict[int, int] (TreeShape 要求 int key)
+        layer_counts_raw = json.loads(self.tree_layer_counts_json)
+        layer_counts = {int(k): v for k, v in layer_counts_raw.items()}
+        # *_tier_rates / *_tiers: Dict[int, float] 或 Dict[int, int] (业务上 PV 值是 int)
+        def _int_keys(d):
+            return {int(k): v for k, v in d.items()}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "created_at": self.created_at,
+            "tree_shape": {
+                "fork_type": self.tree_fork_type,
+                "max_level": self.tree_max_level,
+                "layer_counts": layer_counts,
+            },
+            "growth": {
+                "nodes_per_region_per_week": self.growth_nodes_per_region_per_week,
+                "n_regions": self.growth_n_regions,
+                "join_strategy": self.growth_join_strategy,
+                "weeks_per_month": self.growth_weeks_per_month,
+            },
+            "revenue": {
+                "initial_pv": self.revenue_initial_pv,
+                "monthly_renew_pv": self.revenue_monthly_renew_pv,
+                "color_rule": self.revenue_color_rule,
+                "color_names": json.loads(self.revenue_color_names_json),
+            },
+            "commission_config": {
+                "enable_retail_profit": self.cc_enable_retail_profit,
+                "enable_team_bonus": self.cc_enable_team_bonus,
+                "team_bonus_tier_rates": _int_keys(json.loads(self.cc_team_bonus_tier_rates_json)),
+                "team_bonus_window_weeks": self.cc_team_bonus_window_weeks,
+                "enable_own_basic": self.cc_enable_own_basic,
+                "own_basic_rate": self.cc_own_basic_rate,
+                "own_basic_line_pv_cap": self.cc_own_basic_line_pv_cap,
+                "enable_savings": self.cc_enable_savings,
+                "savings_usd_threshold": self.cc_savings_usd_threshold,
+                "savings_rate": self.cc_savings_rate,
+                "savings_cap_usd": self.cc_savings_cap_usd,
+                "enable_pair_bonus": self.cc_enable_pair_bonus,
+                "pair_bonus_ratios": _int_keys(json.loads(self.cc_pair_bonus_ratios_json)),
+                "pair_bonus_4th_usd_threshold": self.cc_pair_bonus_4th_usd_threshold,
+                "pair_bonus_5th_usd_threshold": self.cc_pair_bonus_5th_usd_threshold,
+                "enable_leader_dividend": self.cc_enable_leader_dividend,
+                "leader_dividend_threshold_pv": self.cc_leader_dividend_threshold_pv,
+                "leader_dividend_share_usd": self.cc_leader_dividend_share_usd,
+                "leader_dividend_tiers": _int_keys(json.loads(self.cc_leader_dividend_tiers_json)),
+                "enable_horizontal_leader": self.cc_enable_horizontal_leader,
+                "horizontal_leader_share_usd": self.cc_horizontal_leader_share_usd,
+                "horizontal_leader_tiers": _int_keys(json.loads(self.cc_horizontal_leader_tiers_json)),
+                "enable_opportunity_points": self.cc_enable_opportunity_points,
+            },
+            "total_target": self.total_target,
+            "total_weeks": self.total_weeks,
+            "total_months": self.total_months,
+        }
+
+    def __repr__(self):
+        return f"<Scenario id={self.id} name={self.name!r} target={self.total_target}>"

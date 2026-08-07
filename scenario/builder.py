@@ -41,15 +41,14 @@ def _build_bfs_tree(tree_shape: TreeShape) -> Dict[int, dict]:
     for bfs_id in range(1, l1_n + 1):
         layer_bfs_queues[1].append(bfs_id)
 
-    while bfs_cursor < total:
-        progressed = False
-        for lv in sorted(layer_counts.keys()):
-            if lv == 0:
-                continue
-            if bfs_cursor >= total:
-                break
-            if not layer_bfs_queues[lv]:
-                continue
+    # 严格按层级循环: 先 L2 父造 L3, 再 L3 父造 L4, ...
+    # 关键: 一个层造完才进下一层 (避免跨层递归 bug)
+    max_lv = max(layer_counts.keys())
+    for lv in range(1, max_lv):
+        if bfs_cursor >= total:
+            break
+        # 处理 lv 层所有父, 造 lv+1 层子
+        while layer_bfs_queues[lv] and bfs_cursor < total:
             parent_bfs = layer_bfs_queues[lv].popleft()
             parent_node = nodes[parent_bfs]
             for line in range(1, fork_max + 1):
@@ -61,13 +60,13 @@ def _build_bfs_tree(tree_shape: TreeShape) -> Dict[int, dict]:
                 nodes[bfs_id] = {"bfs_id": bfs_id, "level": level, "parent_bfs": parent_bfs,
                                  "slot_line_id": line, "region_id": region,
                                  "join_week": 0, "join_month": 0, "color_index": 0}
-                layer_bfs_queues.setdefault(level, deque()).append(bfs_id)
+                layer_bfs_queues[level].append(bfs_id)
                 bfs_cursor += 1
-                progressed = True
-        if not progressed:
-            raise ValueError(
-                f"layer_counts 跟 fork_type 不一致: 造了 {bfs_cursor} 节点, 目标 {total}, 队列已空"
-            )
+
+    if bfs_cursor != total:
+        raise ValueError(
+            f"layer_counts 跟 fork_type 不一致: 造了 {bfs_cursor} 节点, 目标 {total}"
+        )
 
     return nodes
 

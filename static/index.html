@@ -3017,6 +3017,80 @@
   @media (max-width: 640px) {
     .welcome-grid { grid-template-columns: 1fr; }
   }
+
+  /* ★ 2026-08-07: 场景工具 section (4 个独立 HTML 工具, 2x2 网格 + 跳新 tab)
+     位置: 底部 welcome-hint 之后, 用 margin-top 36px + 顶部分隔线跟 hint 视觉断开 */
+  .scenario-section {
+    max-width: 760px;
+    width: 100%;
+    margin: 36px auto 28px;
+    text-align: left;
+    padding-top: 28px;
+    border-top: 1px solid var(--color-border-light);  /* 顶部分隔线, 跟 hint 区分 */
+  }
+  .scenario-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 0 4px;
+  }
+  .scenario-section-title .section-icon {
+    font-size: 18px;
+    color: var(--color-primary);
+  }
+  .scenario-section-title h2 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--color-primary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-family: var(--font-body);
+  }
+  .scenario-section-title .section-hint {
+    font-size: 11.5px;
+    color: var(--color-text-tertiary);
+    margin-left: auto;
+    letter-spacing: 0.02em;
+  }
+  .scenario-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 640px) {
+    .scenario-grid { grid-template-columns: 1fr; }
+  }
+  .scenario-card {
+    padding: 20px 22px 36px;          /* 跟原 welcome-card 类似, padding 略小 */
+    text-decoration: none;             /* 覆盖 <a> 默认下划线 */
+    color: inherit;                     /* 覆盖 <a> 默认蓝色 */
+  }
+  .scenario-card .card-external {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--color-text-tertiary);
+    background: var(--color-bg);
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--color-border);
+    letter-spacing: 0.04em;
+    transition: all 0.2s;
+  }
+  .scenario-card:hover .card-external {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    background: var(--color-bg-card);
+  }
+  .scenario-card .card-desc {
+    font-size: 12.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin: 4px 0 0;
+  }
   /* ========== 4 个 Skill 入口大卡片 (2026-07-10 macOS Big Sur 风格重做) ==========
    * 设计要点:
    *   - 20px 大圆角,teal 描边 0.15 透明度
@@ -3385,10 +3459,6 @@
   <header id="topbar">
     <div class="title" id="topbarTitle">RewardAgentAnalysis</div>
     <div class="controls">
-      <a href="/static/scenario.html" class="nav-link">📐 Scenario</a>  <!-- ★ P3 PR1 加 -->
-      <a href="/static/scenario_compare.html" class="nav-link">📊 Scenario 对比</a>  <!-- ★ P3 PR3 Task 5a 加 -->
-      <a href="/static/scenario_library.html" class="nav-link">📚 Scenario 库</a>  <!-- ★ P4 Task 3a 加 -->
-      <a href="/static/scenario_pdf.html" class="nav-link">📄 Scenario PDF</a>  <!-- ★ P5 Task 4 加 -->
       <button id="cmdKBtn" title="唤起命令面板（⌘K / Ctrl+K）">
         <span class="icon">🔍</span>
         <span class="label">搜索命令、会话、文档</span>
@@ -3403,11 +3473,13 @@
 
   <!-- ========== 首屏 Welcome 屏（空 chat 时显示）========== -->
   <!-- ★ 2026-07-15 改: 6 个快捷按钮(非程序员友好), 替代/补充 slash command -->
+  <!-- ★ 2026-08-07 改: 顶部加 "📐 场景工具" section (4 独立 HTML 工具), 4 nav-link 从 topbar 移过来 -->
   <div id="welcomeScreen" class="hidden">
     <div class="welcome-inner">
       <!-- ★ macOS Welcome 风格大字 (2026-07-10):SF Pro Display Light + 渐变文字 ★ -->
       <div class="welcome-hero">欢迎使用 RewardAgentAnalysis</div>
       <div class="welcome-subhero">5 叉树 · 周结算 · 7 代对等奖金 · 业务规则双轨制渐进解锁</div>
+
       <div class="welcome-grid">
         <!-- ★ 2026-08-05: "查看完整网体" 跳原版网体 (303 节点 12 层深, PR #15 DB 化)
                        旧的 data-action="tree" 是 5 叉树 commission 视图, 业务表空时跟"网体"混淆
@@ -3471,6 +3543,44 @@
         <span>输入 <kbd>/</kbd> 查看所有 slash 命令</span>
         <span class="dot-sep">·</span>
         <span>上面 7 个按钮是快捷入口,效果跟 slash command 一样</span>
+      </div>
+
+      <!-- ★ 2026-08-07: 4 个场景工具 (独立 HTML 页面, 跳新 tab)
+           位置: 移到 welcome-hint 之后, 7 chat 卡 + 提示文字下方
+           原因: Scenario 是独立工具 (跟 LLM chat 不同维度), 不抢 chat 主菜位
+           视觉: 4 卡片 2x2 + 右上角 "↗ 新 tab" 标识, 跟主区明显分层 -->
+      <div class="scenario-section">
+        <div class="scenario-section-title">
+          <span class="section-icon">📐</span>
+          <h2>场景工具</h2>
+          <span class="section-hint">4 个独立工具,点开跳新 tab,跟 LLM chat 不冲突</span>
+        </div>
+        <div class="scenario-grid">
+          <a href="/static/scenario.html" target="_blank" class="welcome-card scenario-card" data-tint="cyan">
+            <div class="card-icon" data-tint="cyan">📐</div>
+            <div class="card-title">Scenario 实时计算器</div>
+            <p class="card-desc">填 4 组参数,实时算 8 种报酬 + Canvas 树形预览</p>
+            <span class="card-external">↗ 新 tab</span>
+          </a>
+          <a href="/static/scenario_compare.html" target="_blank" class="welcome-card scenario-card" data-tint="gold">
+            <div class="card-icon" data-tint="gold">📊</div>
+            <div class="card-title">Scenario 对比</div>
+            <p class="card-desc">多 scenario 并排看,8 报酬 × 14 月折线 + 导出 PNG/CSV</p>
+            <span class="card-external">↗ 新 tab</span>
+          </a>
+          <a href="/static/scenario_library.html" target="_blank" class="welcome-card scenario-card" data-tint="mint">
+            <div class="card-icon" data-tint="mint">📚</div>
+            <div class="card-title">Scenario 库</div>
+            <p class="card-desc">保存调好的 scenario,URL ?id=N 分享给客户</p>
+            <span class="card-external">↗ 新 tab</span>
+          </a>
+          <a href="/static/scenario_pdf.html" target="_blank" class="welcome-card scenario-card" data-tint="cyan">
+            <div class="card-icon" data-tint="cyan">📄</div>
+            <div class="card-title">Scenario PDF 导出</div>
+            <p class="card-desc">单 scenario 9 页完整版商业计划书,1 键下载 PDF</p>
+            <span class="card-external">↗ 新 tab</span>
+          </a>
+        </div>
       </div>
     </div>
   </div>

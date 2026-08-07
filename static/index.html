@@ -579,6 +579,21 @@
     letter-spacing: -0.01em;
   }
   header#topbar .controls { display: flex; gap: 8px; align-items: center; }
+  /* ★ P3 PR1: nav-link (Scenario 入口), 跟 button 视觉对齐, 用主色突出"主菜单" */
+  header#topbar a.nav-link {
+    display: inline-flex; align-items: center;
+    background: var(--color-primary);
+    color: var(--color-accent);
+    border: 1px solid var(--color-primary);
+    padding: 7px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font-body);
+    text-decoration: none;
+    transition: all var(--transition);
+  }
+  header#topbar a.nav-link:hover { filter: brightness(1.1); }
   header#topbar select, header#topbar button {
     background: var(--color-bg-card);
     color: var(--color-text-primary);
@@ -3370,6 +3385,7 @@
   <header id="topbar">
     <div class="title" id="topbarTitle">RewardAgentAnalysis</div>
     <div class="controls">
+      <a href="/static/scenario.html" class="nav-link">📐 Scenario</a>  <!-- ★ P3 PR1 加 -->
       <button id="cmdKBtn" title="唤起命令面板（⌘K / Ctrl+K）">
         <span class="icon">🔍</span>
         <span class="label">搜索命令、会话、文档</span>

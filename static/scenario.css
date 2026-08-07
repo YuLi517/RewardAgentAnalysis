@@ -35,39 +35,70 @@ body {
   gap: 12px;
 }
 
-/* === border-beam 纯 CSS (跟 npm border-beam 包效果一致) === */
+/* === border-beam Rotate (traveling beam, 跟 npm border-beam Rotate 一致) ===
+   实现: conic-gradient 窄光带 + @property --beam-angle 角度动画 + mask 只显示 border
+   - ::after  = 2px 通道上的窄光带 (90°~120° 共 30° 宽, 高光中心白色)
+   - ::before = 内部柔光 halo (顶部淡出, 配合光带制造"扫光"感)
+   关键: padding: 2px + mask-composite exclude 让光带只在 2px border 通道显示 */
+@property --beam-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
 .beam-wrap {
   position: relative;
-  padding: 1px;
+  padding: 2px;                /* 给光带留 2px 通道 (border-beam 标准) */
   border-radius: 12px;
   background: #1a1a2e;
+  isolation: isolate;          /* stacking context, 防止 mask 串扰 */
   overflow: visible;
 }
 .beam-wrap::before, .beam-wrap::after {
   content: '';
   position: absolute;
-  inset: -1px;
-  border-radius: 12px;
+  inset: 0;
+  border-radius: inherit;
   pointer-events: none;
 }
+/* 内部柔光 halo (顶部淡出, 静态时也有微弱光, 让卡片不死板) */
 .beam-wrap::before {
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    #5AA4AE 60deg,
-    #758A99 120deg,
-    transparent 180deg,
-    transparent 360deg
-  );
-  animation: beam-rotate 3s linear infinite;
-  z-index: 1;
-}
-.beam-wrap::after {
-  background: rgba(90, 164, 174, 0.15);
-  filter: blur(8px);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(90, 164, 174, 0.20) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(192, 235, 215, 0.08) 0%, transparent 70%);
   z-index: 0;
 }
-@keyframes beam-rotate { to { transform: rotate(360deg); } }
+/* 2px 通道上的 traveling beam: 30° 宽 + 白色高光中心 + 渐变尾部 */
+.beam-wrap::after {
+  background: conic-gradient(
+    from var(--beam-angle),
+    transparent 0deg,
+    transparent 90deg,
+    rgba(90, 164, 174, 0.4) 95deg,
+    #5AA4AE 102deg,
+    #C0EBD7 108deg,            /* 高光中心 (亮白绿) */
+    #5AA4AE 114deg,
+    rgba(90, 164, 174, 0.4) 121deg,
+    transparent 126deg,
+    transparent 360deg
+  );
+  /* mask 把光带限制在 padding=2px 的 border 通道, 内容区透明 */
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  padding: 2px;
+  animation: beam-spin 3s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(90, 164, 174, 0.6));
+  z-index: 1;
+}
+@keyframes beam-spin {
+  to { --beam-angle: 360deg; }
+}
+/* prefers-reduced-motion: 关掉动画, 保留 1px 静态边 */
+@media (prefers-reduced-motion: reduce) {
+  .beam-wrap::after { animation: none; }
+}
 
 .beam-content {
   position: relative;
@@ -86,13 +117,55 @@ body {
 .form-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 12px;
   padding: 4px 0;
   color: #758A99;
+  gap: 8px;
 }
-.form-row .val {
+/* 可调参数: 跟原 val 视觉对齐 (金黄 monospace 右对齐), 但可编辑 */
+.form-row .val-input {
+  background: rgba(90, 164, 174, 0.08);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 3px 8px;
   color: #F0C239;
   font-family: "Consolas", monospace;
+  font-size: 12px;
+  text-align: right;
+  width: 110px;
+  outline: none;
+  transition: all 0.15s;
+  -moz-appearance: textfield;
+  cursor: text;
+}
+.form-row .val-input::-webkit-outer-spin-button,
+.form-row .val-input::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+.form-row .val-input:hover {
+  background: rgba(90, 164, 174, 0.15);
+  border-color: rgba(90, 164, 174, 0.4);
+}
+.form-row .val-input:focus {
+  background: rgba(90, 164, 174, 0.22);
+  border-color: #5AA4AE;
+  box-shadow: 0 0 0 2px rgba(90, 164, 174, 0.25);
+}
+.form-row .val-input.invalid {
+  border-color: #EF4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+}
+.form-row .val-input::placeholder {
+  color: #758A99;
+  opacity: 0.6;
+}
+.form-row .val.readonly {
+  color: #F0C239;
+  font-family: "Consolas", monospace;
+  font-size: 11px;
+  opacity: 0.7;
+  cursor: help;
 }
 
 /* === Canvas === */

@@ -16,32 +16,58 @@
         <div class="beam-wrap" data-section="tree">
           <div class="beam-content">
             <h3>🌳 TreeShape (树形)</h3>
-            <div class="form-row"><span>fork_type</span><span class="val">binary</span></div>
-            <div class="form-row"><span>max_level</span><span class="val">10</span></div>
-            <div class="form-row"><span>total_target</span><span class="val">2144</span></div>
+            <div class="form-row"><span>fork_type</span>
+              <select class="val-input" data-key="fork_type">
+                <option value="binary">binary (2 叉)</option>
+                <option value="ternary">ternary (3 叉)</option>
+                <option value="quaternary">quaternary (4 叉)</option>
+              </select>
+            </div>
+            <div class="form-row"><span>max_level</span>
+              <input class="val-input" type="text" inputmode="numeric" data-key="max_level" value="10" />
+            </div>
+            <div class="form-row"><span>total_target</span>
+              <input class="val-input" type="text" inputmode="numeric" data-key="total_target" value="2144" />
+            </div>
           </div>
         </div>
         <div class="beam-wrap" data-section="growth">
           <div class="beam-content">
             <h3>📈 Growth (增长)</h3>
-            <div class="form-row"><span>per_region/week</span><span class="val">9</span></div>
-            <div class="form-row"><span>n_regions</span><span class="val">4</span></div>
-            <div class="form-row"><span>weeks/month</span><span class="val">4</span></div>
+            <div class="form-row"><span>per_region/week</span>
+              <input class="val-input" type="text" inputmode="numeric" data-key="nodes_per_region_per_week" value="9" />
+            </div>
+            <div class="form-row"><span>n_regions</span>
+              <input class="val-input" type="text" inputmode="numeric" data-key="n_regions" value="4" />
+            </div>
+            <div class="form-row"><span>weeks/month</span>
+              <input class="val-input" type="text" inputmode="numeric" data-key="weeks_per_month" value="4" />
+            </div>
           </div>
         </div>
         <div class="beam-wrap" data-section="revenue">
           <div class="beam-content">
             <h3>💰 Revenue (收入)</h3>
-            <div class="form-row"><span>initial_pv</span><span class="val">1500</span></div>
-            <div class="form-row"><span>monthly_renew</span><span class="val">100</span></div>
+            <div class="form-row"><span>initial_pv</span>
+              <input class="val-input" type="text" inputmode="numeric" data-key="initial_pv" value="1500" />
+            </div>
+            <div class="form-row"><span>monthly_renew</span>
+              <input class="val-input" type="text" inputmode="numeric" data-key="monthly_renew_pv" value="100" />
+            </div>
           </div>
         </div>
         <div class="beam-wrap" data-section="commission">
           <div class="beam-content">
             <h3>🎁 Commission (报酬)</h3>
-            <div class="form-row"><span>own_basic_rate</span><span class="val">15%</span></div>
-            <div class="form-row"><span>pair_bonus 1代</span><span class="val">15%</span></div>
-            <div class="form-row"><span>team_bonus 4档</span><span class="val">15-30%</span></div>
+            <div class="form-row"><span>own_basic_rate</span>
+              <input class="val-input" type="text" inputmode="numeric" data-key="own_basic_rate" value="0.15" />
+            </div>
+            <div class="form-row"><span>pair_bonus 1代</span>
+              <input class="val-input" type="text" inputmode="numeric" data-key="pair_bonus_ratio_1gen" value="0.15" />
+            </div>
+            <div class="form-row"><span>team_bonus 4档</span>
+              <span class="val readonly" title="200→15% / 500→20% / 1000→25% / 1500→30%">15-30%</span>
+            </div>
           </div>
         </div>
       </div>

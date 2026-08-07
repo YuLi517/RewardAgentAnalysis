@@ -220,13 +220,95 @@
     }
   }
 
-  // 绑定按钮
+  // === P1 v1.0.1: 4 个 beam-wrap 的 .val-input 双向绑定到 formState ===
+  // 业务: 用户改 max_level/total_target/fork_type/3 个 growth/2 个 revenue/2 个 commission
+  //       改后 formState 同步, 提交按钮 (submitScenario) 自动用最新值
+  // 设计: 9 个数字 input + 1 个 select + 1 个 readonly (team_bonus 4 档, PV 阈值业务规则强不动)
+  function rebuildLayerCounts(totalTarget, forkType) {
+    // total_target 改变 → 重新按 fork_type 算 layer_counts
+    // 业务: L0=1, L1=fork_type, L_k+ = L_k * fork_type, 最后层 leftover
+    const base = forkType === 'binary' ? 2 : forkType === 'ternary' ? 3 : 4;
+    const counts = {0: 1};
+    let sum = 1;
+    for (let lv = 1; lv <= 10; lv++) {
+      const next = counts[lv - 1] * base;
+      if (sum + next > totalTarget) {
+        counts[lv] = totalTarget - sum;  // 最后一层 leftover
+        return formState.tree_shape.layer_counts = counts;
+      }
+      counts[lv] = next;
+      sum += next;
+    }
+    return formState.tree_shape.layer_counts = counts;
+  }
+
+  function syncInputToFormState(el) {
+    const section = el.closest('.beam-wrap')?.dataset.section;
+    const key = el.dataset.key;
+    if (!section || !key) return false;
+    let value = el.value;
+    // select (fork_type) 直接用 string
+    if (el.tagName === 'SELECT') {
+      // 直接更新 fork_type
+      if (section === 'tree' && key === 'fork_type') {
+        formState.tree_shape.fork_type = value;
+        // fork_type 改变时, 按当前 total_target 重建 layer_counts
+        const total = formState.tree_shape.layer_counts ? Object.values(formState.tree_shape.layer_counts).reduce((a, b) => a + b, 0) : 2144;
+        rebuildLayerCounts(total, value);
+      }
+      return true;
+    }
+    // 数字 input (rate 用 float, 其余 int)
+    const isFloat = /rate|ratio/.test(key);
+    const num = isFloat ? parseFloat(value) : parseInt(value);
+    if (isNaN(num) || num < 0) {
+      el.classList.add('invalid');
+      return false;
+    }
+    el.classList.remove('invalid');
+    value = num;
+    // 路径映射
+    if (section === 'tree') {
+      if (key === 'max_level') {
+        // max_level 改变时裁剪 layer_counts 到 max_level
+        const lc = formState.tree_shape.layer_counts || {};
+        formState.tree_shape.max_level = value;
+        formState.tree_shape.layer_counts = Object.fromEntries(
+          Object.entries(lc).filter(([k]) => parseInt(k) <= value)
+        );
+      } else if (key === 'total_target') {
+        rebuildLayerCounts(value, formState.tree_shape.fork_type);
+      }
+    } else if (section === 'growth') {
+      formState.growth[key] = value;
+    } else if (section === 'revenue') {
+      formState.revenue[key] = value;
+    } else if (section === 'commission') {
+      if (key === 'own_basic_rate') {
+        formState.commission_config.own_basic_rate = value;
+      } else if (key === 'pair_bonus_ratio_1gen') {
+        formState.commission_config.pair_bonus_ratios['1'] = value;
+      }
+    }
+    return true;
+  }
+
+  function bindFormInputs() {
+    document.querySelectorAll('.val-input').forEach(el => {
+      el.addEventListener('input', () => syncInputToFormState(el));
+      el.addEventListener('change', () => syncInputToFormState(el));
+    });
+  }
+
+  // 绑定按钮 + 表单 input
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       $('#btn-submit').addEventListener('click', submitScenario);
+      bindFormInputs();
     });
   } else {
     $('#btn-submit').addEventListener('click', submitScenario);
+    bindFormInputs();
   }
 
   // === P3 PR2: 热图渲染 ===

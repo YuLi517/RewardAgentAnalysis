@@ -9,92 +9,99 @@
 </head>
 <body>
   <div class="p3-container">
-    <h1 class="p3-title">📐 SCENARIO 实时计算器</h1>
+    <h1 class="p3-title">📐 SCENARIO 招商/路演实时计算器</h1>
 
     <div class="p3-layout">
-      <!-- LEFT: 4 个 glow-card 表单 -->
-      <div class="p3-left">
+      <!-- 4 个 glow-card 表单 (横排) + submit 按钮 -->
+      <section class="p3-form-section">
+        <div class="p3-form-row">
 
-        <!-- TreeShape -->
-        <div class="glow-card" data-section="tree">
-          <div class="glow-border"></div>
-          <div class="glow-inner">
-            <h3>🌳 TreeShape (树形)</h3>
-            <div class="form-row">
-              <span>分叉类型 fork_type</span>
-              <select class="val-input" data-key="fork_type" title="后端已实现 binary/ternary/quaternary; 8 叉以上 选了会 500">
-                <option value="binary">2 叉 (binary) ✓</option>
-                <option value="ternary">3 叉 (ternary) ✓</option>
-                <option value="quaternary">4 叉 (quaternary) ✓</option>
-              </select>
-            </div>
-            <div class="form-row">
-              <span>最大层级 max_level</span>
-              <input class="val-input" type="text" inputmode="numeric" data-key="max_level" value="10" />
-            </div>
-            <div class="form-row">
-              <span>总节点数 total_target</span>
-              <input class="val-input" type="text" inputmode="numeric" data-key="total_target" value="2144" />
+          <!-- TreeShape -->
+          <div class="glow-card" data-section="tree">
+            <div class="glow-border"></div>
+            <div class="glow-inner">
+              <h3>🌳 TreeShape (树形)</h3>
+              <div class="form-row">
+                <span>分叉类型 fork_type</span>
+                <select class="val-input" data-key="fork_type" title="后端已实现 binary/ternary/quaternary; 8 叉以上 选了会 500">
+                  <option value="binary">2 叉 (binary) ✓</option>
+                  <option value="ternary">3 叉 (ternary) ✓</option>
+                  <option value="quaternary">4 叉 (quaternary) ✓</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <span>最大层级 max_level</span>
+                <input class="val-input" type="text" inputmode="numeric" data-key="max_level" value="10" />
+              </div>
+              <div class="form-row">
+                <span>总节点数 total_target</span>
+                <input class="val-input" type="text" inputmode="numeric" data-key="total_target" value="2144" />
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Growth -->
-        <div class="glow-card" data-section="growth">
-          <div class="glow-border"></div>
-          <div class="glow-inner">
-            <h3>📈 Growth (增长)</h3>
-            <div class="form-row">
-              <span>每周新增人数 per_region/week</span>
-              <input class="val-input" type="text" inputmode="numeric" data-key="nodes_per_region_per_week" value="9" />
-            </div>
-            <div class="form-row">
-              <span>大区数量 n_regions</span>
-              <input class="val-input" type="text" inputmode="numeric" data-key="n_regions" value="4" />
+          <!-- Growth -->
+          <div class="glow-card" data-section="growth">
+            <div class="glow-border"></div>
+            <div class="glow-inner">
+              <h3>📈 Growth (增长)</h3>
+              <div class="form-row">
+                <span>每周新增人数 per_region/week</span>
+                <input class="val-input" type="text" inputmode="numeric" data-key="nodes_per_region_per_week" value="9" />
+              </div>
+              <div class="form-row">
+                <span>大区数量 n_regions</span>
+                <input class="val-input" type="text" inputmode="numeric" data-key="n_regions" value="4" />
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Revenue -->
-        <div class="glow-card" data-section="revenue">
-          <div class="glow-border"></div>
-          <div class="glow-inner">
-            <h3>💰 Revenue (收入)</h3>
-            <div class="form-row">
-              <span> 新加入成员 PV值 initial_pv</span>
-              <input class="val-input" type="text" inputmode="numeric" data-key="initial_pv" value="1500" />
-            </div>
-            <div class="form-row">
-              <span> 递延 PV值 monthly_renew</span>
-              <span class="val readonly" title="100 PV">100 PV</span>
+          <!-- Revenue -->
+          <div class="glow-card" data-section="revenue">
+            <div class="glow-border"></div>
+            <div class="glow-inner">
+              <h3>💰 Revenue (收入)</h3>
+              <div class="form-row">
+                <span> 新加入成员 PV值 initial_pv</span>
+                <input class="val-input" type="text" inputmode="numeric" data-key="initial_pv" value="1500" />
+              </div>
+              <div class="form-row">
+                <span> 递延 PV值 monthly_renew</span>
+                <span class="val readonly" title="100 PV">100 PV</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Commission -->
-        <div class="glow-card" data-section="commission">
-          <div class="glow-border"></div>
-          <div class="glow-inner">
-            <h3>🎁 Commission (报酬)</h3>
-            <div class="form-row">
-              <span> 基本佣金汇率 own_basic_rate</span>
-              <span class="val readonly" title="15%" >15%</span>
-            </div>
-            <div class="form-row">
-              <span> 对等奖金 pair_bonus 7代</span>
-              <span class="val readonly" title="7代">1代:15% / 2代:10% / 3代:5% / 4代:5% / 5代:5% / 6代:5% / 7代:5%</span>
-            </div>
-            <div class="form-row">
-              <span> 培育奖金 team_bonus 4档</span>
-              <span class="val readonly" title="15%→30%">200→15% / 500→20% / 1000→25% / 1500→30%</span>
+          <!-- Commission -->
+          <div class="glow-card" data-section="commission">
+            <div class="glow-border"></div>
+            <div class="glow-inner">
+              <h3>🎁 Commission (报酬)</h3>
+              <div class="form-row">
+                <span> 基本佣金汇率 own_basic_rate</span>
+                <span class="val readonly" title="15%" >15%</span>
+              </div>
+              <div class="form-row">
+                <span> 对等奖金 pair_bonus 7代</span>
+                <span class="val readonly" title="7代">1代:15% / 2代:10% / 3代:5% / 4代:5% / 5代:5% / 6代:5% / 7代:5%</span>
+              </div>
+              <div class="form-row">
+                <span> 培育奖金 team_bonus 4档</span>
+                <span class="val readonly" title="15%→30%">200→15% / 500→20% / 1000→25% / 1500→30%</span>
+              </div>
             </div>
           </div>
+
         </div>
 
-      </div>
+        <!-- submit 按钮在 4 框下方 -->
+        <div class="p3-submit-row">
+          <button id="btn-submit" class="p3-submit-btn">🎲 提交场景 + 算报酬</button>
+        </div>
+      </section>
 
-      <!-- RIGHT: 8 报酬卡片 + 热图 -->
-      <div class="p3-right">
+      <!-- 8 报酬卡片 + 热图 (跟 4 框同宽) -->
+      <section class="p3-right">
         <h2>💎 8 种报酬 — 月 14 累计</h2>
         <div class="p3-cards">
           <div class="glow-card glow-card-compact" data-field="ownBasic"><div class="glow-border"></div><div class="glow-inner"><div class="label">基本佣金 ownBasic</div><div class="val">—</div></div></div>
@@ -105,11 +112,6 @@
           <div class="glow-card glow-card-compact" data-field="horizontal"><div class="glow-border"></div><div class="glow-inner"><div class="label">横向领袖分红 horizontal</div><div class="val">—</div></div></div>
           <div class="glow-card glow-card-compact" data-field="retail"><div class="glow-border"></div><div class="glow-inner"><div class="label">零售利润 retail</div><div class="val">—</div></div></div>
           <div class="glow-card glow-card-compact glow-card-highlight" data-field="total"><div class="glow-border"></div><div class="glow-inner"><div class="label">总金额 total</div><div class="val">—</div></div></div>
-        </div>
-
-        <div class="p3-submit-row">
-          <button id="btn-preview" class="p3-preview-btn">👁 树形预览</button>
-          <button id="btn-submit" class="p3-submit-btn">🎲 提交场景 + 算报酬</button>
         </div>
 
         <div id="toast" class="p3-toast" style="display:none"></div>
@@ -133,7 +135,7 @@
             <button class="month-detail-close">✕ 关闭</button>
           </div>
         </section>
-      </div>
+      </section>
     </div>
   </div>
 

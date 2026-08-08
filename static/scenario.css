@@ -19,9 +19,15 @@ body {
   margin-bottom: 16px; text-align: center;
 }
 .p3-layout {
-  display: grid; grid-template-columns: 280px 1fr; gap: 16px;
+  display: flex; flex-direction: column; gap: 16px;
 }
-.p3-left, .p3-right {
+.p3-form-section { display: flex; flex-direction: column; gap: 12px; }
+.p3-form-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.p3-right {
   display: flex; flex-direction: column; gap: 12px;
 }
 
@@ -210,26 +216,33 @@ body {
   cursor: help;
 }
 
+/* 响应式: 屏幕 < 900px 时 4 框 → 2 列, < 600px 时 → 1 列 */
+@media (max-width: 900px) {
+  .p3-form-row { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .p3-form-row { grid-template-columns: 1fr; }
+}
+
 /* === 按钮 === */
 .p3-submit-row { display: flex; gap: 8px; margin-top: 8px; }
-.p3-submit-btn, .p3-preview-btn {
-  padding: 10px 16px;
-  border-radius: 6px;
-  font-size: 13px;
+.p3-submit-btn {
+  flex: 1;
+  padding: 14px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   border: none;
-}
-.p3-submit-btn {
   background: linear-gradient(135deg, #5AA4AE, #758A99);
   color: #fff;
-  flex: 1;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(90, 164, 174, 0.25);
+  transition: filter 0.15s, opacity 0.15s, transform 0.1s;
 }
+.p3-submit-btn:hover { filter: brightness(1.1); }
+.p3-submit-btn:active { transform: translateY(1px); }
 .p3-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.p3-preview-btn {
-  background: transparent;
-  color: #C0EBD7;
-  border: 1px solid #758A99;
-}
 
 /* === Toast === */
 .p3-toast {

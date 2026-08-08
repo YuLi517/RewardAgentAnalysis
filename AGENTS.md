@@ -701,6 +701,66 @@
 - **改 .gitignore**: v1.0.16 加 `!scenario/commission/_helpers.py` 例外 (修 v1.0.11 _* 误伤)
 
 
+### 2.16b bfs_id 偏移修复 (v1.0.18 拍板, 2026-08-08)
+
+- **业务背景**: v1.0.18 (用户 2026-08-08 拍板)
+  - 之前 v1.0.9 (binary/quaternary JSON 模板) 引入 bfs_id 偏移: template_id = 1, 2, 3, ... → bfs_id = 1, 2, 3, ...
+  - 跟 ternary 原 `scenario/builder.py` 不一致: bfs_id = 0, 1, 2, ... (root=0, L1 父=1,2,3,4)
+  - 业务不一致表现: inspect 工具跨 fork_type 看 root 节点 binary 看 bfs_id=1, ternary 看 bfs_id=0
+  - 拍板: 统一 bfs_id 体系, JSON 模板改 `bfs_id = template_id - 1`, 跨 ternary/binary/quaternary 都 root=0
+- **业务规则 (v1.0.18 拍板)**:
+  1. **统一 bfs_id**: 所有 fork_type (ternary/binary/quaternary) 都走 `bfs_id = template_id - 1` 体系
+  2. **root = bfs_id 0**: JSON 模板第 1 个节点 (template_id=1) = bfs_id 0
+  3. **L1 父 = bfs_id 1,2,3,4**: JSON 模板第 2-5 个节点 = bfs_id 1,2,3,4
+  4. **DB migration 透明**: `tools/migrate_bfs_offset.py` 清旧 scenario 的 scenario_nodes + 清 locks_json 字段, lazy backfill 触发重算
+  5. **旧 scenario 兼容**: scenario 1/111/113/115/123/124/131/134/135/137/138 (11 个 binary/quaternary) lazy backfill 走新算法
+  6. **ternary 0 改动**: id 112 (ternary) 一直走原 builder.py (root=0), 验证仍 root=0 不变
+- **算法 (scenario/json_tree_loader.py)**:
+  - 旧: `bfs_id = template_id`, `parent_bfs = template_p`
+  - 新: `bfs_id = template_id - 1`, `parent_bfs = template_p - 1 if template_p else -1`
+  - 影响函数: `_load_*_tree()` 8 个 JSON 模板 (binary/quaternary)
+  - ternary 不动: 走 `scenario/builder.py` 原 `bfs_id = layer_bfs_queues[lv].popleft()` 体系
+- **DB 迁移 (tools/migrate_bfs_offset.py)**:
+  - 列 binary/quaternary scenario (12 个, 含当前 v1.0.18 测试 scenario)
+  - 删 scenario_nodes (FK CASCADE 不开, 显式 2 步 DELETE: scenario_nodes → scenarios)
+  - 清 locks_json 字段 (UPDATE NULL)
+  - VACUUM INTO 回收 free pages
+  - `--dry-run` 模式 + 默认确认提示
+  - 跑后: DB 1.81MB → 228KB (进一步节省 87.4%)
+- **业务示例 (binary 2144 节点, scenario 1 lazy backfill 后)**:
+  - root bfs_id=0: level=0, parent_bfs=-1, slot=0 (v1.0.17 是 bfs_id=1)
+  - L1 父 bfs_id=1: level=1, parent_bfs=0, slot=1 (v1.0.17 是 bfs_id=2)
+  - L1 父 bfs_id=2: level=1, parent_bfs=0, slot=2
+  - L1 父 bfs_id=3: level=1, parent_bfs=0, slot=3
+  - L1 父 bfs_id=4: level=1, parent_bfs=0, slot=4
+  - L2 bfs_id=5: level=2, parent_bfs=1, slot=1
+  - 范围 0-2143 (跟 v1.0.17 一致, 总数 2144 不变)
+  - root 4 子 (1代4 业务): v1.0.17 `[2, 3, 4, 5]` → v1.0.18 `[1, 2, 3, 4]`
+- **业务示例 (ternary 161 节点, scenario 112, 走原 builder.py)**:
+  - root bfs_id=0: level=0, parent_bfs=-1 (跟 v1.0.17 一致, 没动)
+  - L1 父 bfs_id=1-4: level=1, parent_bfs=0
+  - 范围 0-160 (没动)
+- **DB 体积演进**:
+  - v1.0.17 后: 1.72MB (12 scenarios × ~2144 nodes)
+  - v1.0.18 后: 228KB (清 scenario_nodes + VACUUM INTO 回收 free pages)
+- **E2E** (`_e2e_v1018.py` 10/10 PASS):
+  - 1. POST /api/scenarios (id 141) → 102ms, 写新 bfs_id 体系
+  - 2. GET /api/scenarios/1/overview?month=14 → 24ms, lazy backfill 触发, commission $96,710 跟 v1.0.15 一致
+  - 3. inspect_scenario_nodes 1 0 → bfs_id=0 是 root (level=0, parent=-1)
+  - 4. inspect_scenario_nodes 1 1 → bfs_id=1 是 L1 父 1 (parent=0)
+  - 5. inspect_scenario_nodes 1 level=1 → L1 4 节点 (bfs_id 1-4)
+  - 6. inspect_scenario_nodes 1 region=1 → region 1 包含 bfs_id 1 + 子树
+  - 7. inspect_one_gen_four_locks 1 0 → root 4 子 = [1, 2, 3, 4]
+  - 8. state 端点 bfs_id=0 → 1代4 = $190 (190 USD × 1 月)
+  - 9. ternary id 112 bfs_id=0 → 仍是 root (原 builder.py 没动)
+  - 10. DB 验: scenario 1 bfs_id range (0, 2143), 前 5 节点符合新体系
+- **改 bfs_id 必查**: `scenario/json_tree_loader.py` 8 个 _load_*_tree 函数 + `scenario/locks.py` 1代4 locks 序列化 + `tools/migrate_bfs_offset.py` DB 迁移 + `tools/inspect_scenario_nodes.py` 业务可视化
+- **业务影响**:
+  - inspect 工具预期更新: bfs_id 0,1,2,3,4 对应 root + L1 父 4 大区 (之前是 1,2,3,4,5)
+  - 1代4 locks 字段: root 4 子 bfs_id 列表从 `[2, 3, 4, 5]` 变 `[1, 2, 3, 4]`
+  - 前端 4 页面 (scenario/scenario_compare/scenario_library/scenario_pdf): 不受影响 (bfs_id 是后端概念, 前端只用 month/index)
+
+
 ### 2.17 储蓄奖金 (Savings Bonus, PR #73 拍板, 2026-08-06)
 
 **业务 (用户 2026-08-06 拍板原话)**:

@@ -1,10 +1,21 @@
-"""json 树模板加载器 (v1.0.9 2026-08-08)
+"""json 树模板加载器 (v1.0.9 2026-08-08, v1.0.18 2026-08-08 bfs_id 偏移修复)
 
 业务: 之前 fork_type 走 builder.py._build_bfs_tree 动态构树 (PR #18 位反转算法)
       现在用户 (2026-08-08) 拍板: fork_type 选不同 JSON 模板 + 取前 N=2144 节点
         - binary (2 叉)     → json/binarytree_4093.json     → 前 2144 节点
         - quaternary (4 叉) → json/quaternarytree_87381.json → 前 2144 节点
         - ternary (3 叉)    → 维持 5_3 兼容 (现有 _build_bfs_tree)
+
+v1.0.18 关键变更 (bfs_id 偏移修复):
+  - 之前 (v1.0.9-v1.0.17): 模板 id 1 = root → bfs_id 1 (跟原 builder.py root=0 不一致)
+    业务影响: state 端点 bfs_id=0 拿空, PDF TOP5_BFS_IDS=[0,1,2,3,4] 第 1 个不是 root,
+             前端默认 bfs_id=0 = root 跟 binary/quaternary 实际不一致
+  - 现在 (v1.0.18): bfs_id = template_id - 1 (binary/quaternary root=0, L1 父=1,2,3,4)
+    业务上 ternary / binary / quaternary 三种 fork_type 全部统一:
+    - root = bfs_id 0
+    - L1 父 = bfs_id 1, 2, 3, 4
+    - L2+ 节点 bfs_id - 1 跟原 builder.py 一致
+  - 业务动机: 用户可以"随时查每个点位", bfs_id 体系跨 fork_type 一致
 
 JSON 树文件结构 (binarytree_4093.json / quaternarytree_87381.json):
   {
@@ -19,7 +30,8 @@ JSON 树文件结构 (binarytree_4093.json / quaternarytree_87381.json):
     ]
   }
 
-id = BFS 编号 (位反转算法), p = parent_id (null=root), c = children_ids 列表
+id = 模板 BFS 编号 (位反转算法, root=1), p = parent_id (null=root), c = children_ids 列表
+v1.0.18 后: bfs_id = template_id - 1 (业务上 root=0, L1 父=1,2,3,4 跟 ternary 一致)
 """
 from __future__ import annotations
 import json
@@ -123,16 +135,23 @@ def build_bfs_nodes_from_template(fork_type: str, n: int) -> Dict[int, dict]:
                 slot_map[child_id] = i
                 queue.append((child_id, cur, i))
 
-    # 构最终 bfs_nodes
+    # 构最终 bfs_nodes (v1.0.18: bfs_id = template_id - 1, 跟原 builder.py root=0 一致)
+    # 业务上: 跨 binary / quaternary / ternary 三种 fork_type, root 都是 bfs_id 0
+    #         L1 父都是 bfs_id 1, 2, 3, 4 (4 大区)
     bfs_nodes: Dict[int, dict] = {}
     for node in truncated:
-        bid = node["id"]
-        bfs_nodes[bid] = {
-            "bfs_id": bid,
-            "level": level_map.get(bid, 0),
-            "parent_bfs": node["p"] if node["p"] is not None else -1,
-            "slot_line_id": slot_map.get(bid, 0),
-            "region_id": region_map.get(bid, 0),
+        template_id = node["id"]
+        template_p = node["p"]
+        # 关键偏移: 模板 id 1 (root) → bfs_id 0
+        bfs_id = template_id - 1
+        # 父 bfs_id 同样偏移 (null=root, bfs_id=-1 表示无父)
+        parent_bfs = (template_p - 1) if template_p is not None else -1
+        bfs_nodes[bfs_id] = {
+            "bfs_id": bfs_id,
+            "level": level_map.get(template_id, 0),
+            "parent_bfs": parent_bfs,
+            "slot_line_id": slot_map.get(template_id, 0),
+            "region_id": region_map.get(template_id, 0),
             # 兼容 _build_bfs_tree 字段 (业务上 scenario commission/ 不强依赖这 3 个)
             "join_week": 0,
             "join_month": 0,

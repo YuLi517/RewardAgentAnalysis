@@ -91,7 +91,7 @@ class Scenario:
 
 @dataclass(frozen=True)
 class CommissionBreakdown:
-    """节点单月 8 种报酬 + 累计 + 触发门槛状态"""
+    """节点单月 9 种报酬 + 累计 + 触发门槛状态 (v1.0.12 加 1代4)"""
     bfs_id: int
     month: int
     own_basic_usd: Decimal
@@ -102,6 +102,7 @@ class CommissionBreakdown:
     horizontal_leader_usd: Decimal
     retail_profit_usd: Decimal
     opportunity_points: int
+    one_gen_four_usd: Decimal  # v1.0.12: 1代4 商品价值 (95 PV 固定, 父节点凑齐 4 子)
     total_usd: Decimal
     ip_chain_status: List[Tuple[int, int, int, int, bool, int]]
     is_optimized_region: bool

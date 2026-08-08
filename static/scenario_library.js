@@ -77,12 +77,12 @@
         $('#detail-title').textContent = `📌 S${s.id}: ${s.name}`;
         $('#detail-meta').textContent = `📅 ${(s.created_at || '').slice(0, 19)} | M${s.total_months} (${s.total_target} 节点)`;
       }
-      // 2) GET overview M14 (跟 PR1 一样, 拍板 bfs_id=0 展示根节点, 这里用 overview 拿 8 报酬)
+      // 2) GET overview M14 (跟 PR1 一样, 拍板 bfs_id=0 展示根节点, 这里用 overview 拿 9 报酬)
       const ovResp = await fetch(`/api/scenarios/${id}/overview?month=14`);
       if (!ovResp.ok) throw new Error('overview HTTP ' + ovResp.status);
       const overview = await ovResp.json();
       const fields = ['ownBasic', 'pairBonus', 'teamBonus', 'savings',
-                      'leader', 'horizontal', 'retail', 'total'];
+                      'leader', 'horizontal', 'retail', 'oneGenFour', 'total'];
       $$('.lib-cards .card').forEach(card => {
         const f = card.dataset.field;
         if (overview[f] !== undefined) {
@@ -90,7 +90,7 @@
         }
       });
       // 3) GET state M14 bfs_id=0 拿 4 参数 (走 /state 端点返 12 字段, 从 to_dict 拿 4 参数)
-      // 简化: P4 不展示 4 参数完整值, 只展示 8 报酬 (跟 spec 拍板一致)
+      // 简化: P4 不展示 4 参数完整值, 只展示 9 报酬 (跟 spec 拍板一致)
       $('#p-fork').textContent = '-';
       $('#p-maxlv').textContent = '-';
       $('#p-target').textContent = s ? s.total_target : '-';

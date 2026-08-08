@@ -162,7 +162,7 @@ def get_state(scenario_id: int,
 
     业务:
       1. 加载 scenario (4 组参数 + 派生 from DB)
-      2. compute_commission_breakdown 算当月节点 8 种报酬 + 累计
+      2. compute_commission_breakdown 算当月节点 9 种报酬 (v1.0.12 加 1代4) + 累计
       3. Decimal 字段 str 化 (JSON 不支持 Decimal)
     """
     repo = ScenarioRepository(db)
@@ -181,6 +181,7 @@ def get_state(scenario_id: int,
         "horizontal_leader_usd": str(cb.horizontal_leader_usd),
         "retail_profit_usd": str(cb.retail_profit_usd),
         "opportunity_points": cb.opportunity_points,
+        "one_gen_four_usd": str(cb.one_gen_four_usd),  # v1.0.12: 1代4 商品价值
         "total_usd": str(cb.total_usd),
         "ip_chain_status": cb.ip_chain_status,
         "is_optimized_region": cb.is_optimized_region,
@@ -192,11 +193,11 @@ def get_state(scenario_id: int,
 def get_overview(scenario_id: int,
                  month: int = Query(..., ge=0),
                  db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """取当月全网总览: scenario_id + month → 8 种合计
+    """取当月全网总览: scenario_id + month → 9 种合计 (v1.0.12 加 1代4)
 
     业务:
       1. 加载 scenario
-      2. compute_month_overview 算当月全网 8 种合计
+      2. compute_month_overview 算当月全网 9 种合计
       3. Decimal 字段 str 化
     """
     repo = ScenarioRepository(db)
@@ -211,11 +212,13 @@ def get_overview(scenario_id: int,
 def get_overview_all(scenario_id: int,
                      total_months: int = Query(14, ge=1, le=15),
                      db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """取 scenario 0-total_months 月的 8 报酬 × 月 矩阵 (heatmap 渲染用)
+    """取 scenario 0-total_months 月的 9 报酬 × 月 矩阵 (heatmap 渲染用)
 
-    业务 (P3 PR2 + P1.5):
+    业务 (P3 PR2 + P1.5 + v1.0.12):
       - P3 PR2: 1 次算 14 月 × 8 报酬 = 112 值 (避免前端 14 次串行 GET)
       - P1.5: ThreadPoolExecutor 14 worker 并行, 14 月 14 分钟 → 10 秒内
+      - P1.6: ProcessPoolExecutor GIL-free 真正并行, 1st < 150ms
+      - v1.0.12: 9 报酬 (加 1代4) = 126 值
       - 矩阵按字段分组, 返 15 个 string (0-14 月)
     """
     repo = ScenarioRepository(db)
@@ -248,7 +251,7 @@ def list_scenarios_csv(db: Session = Depends(get_db)) -> PlainTextResponse:
 def export_scenario_csv(scenario_id: int,
                         total_months: int = Query(14, ge=1, le=15),
                         db: Session = Depends(get_db)) -> PlainTextResponse:
-    """导出 scenario overview 14 月 × 8 报酬 = 113 行 CSV
+    """导出 scenario overview 14 月 × 9 报酬 = 126 行 CSV (v1.0.12 加 1代4)
     """
     from scenario.repository import ScenarioRepository
     repo = ScenarioRepository(db)
@@ -256,7 +259,7 @@ def export_scenario_csv(scenario_id: int,
     if s is None:
         raise HTTPException(status_code=404, detail=f"scenario {scenario_id} not found")
     fields = ["ownBasic", "pairBonus", "teamBonus", "savings",
-              "leader", "horizontal", "retail", "total"]
+              "leader", "horizontal", "retail", "oneGenFour", "total"]
     lines = ["scenario_id,scenario_name,month,field,value"]
     for m in range(0, total_months + 1):
         ov = compute_month_overview(s, month=m)

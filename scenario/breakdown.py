@@ -3,6 +3,7 @@
 - own_basic / pair_bonus / team_bonus / savings / leader / horizontal / retail / opportunity
   8 张全网表 (1 次后序遍历算全网 2144 节点), breakdown 改用查表替代循环单节点
 - 跟 own_basic PR2 round 3 模式一致
+v1.0.12: 加 1代4 商品价值 (one_gen_four, 第 9 种报酬, 父节点凑齐 4 子 = 95 PV)
 """
 from __future__ import annotations
 from decimal import Decimal
@@ -18,6 +19,7 @@ from scenario.commission.leader import compute_leader_dividend_table_for_month
 from scenario.commission.horizontal import compute_horizontal_table_for_month
 from scenario.commission.retail_profit import compute_retail_profit_table_for_month
 from scenario.commission.opportunity import compute_opportunity_table_for_month
+from scenario.commission.one_gen_four import compute_one_gen_four_table_for_month
 from scenario.commission._helpers import clear_all_caches
 
 
@@ -36,16 +38,17 @@ def _compute_pair_bonus_table(scenario: Scenario, month: int,
 
 
 def compute_commission_breakdown(scenario: Scenario, bfs_id: int, month: int) -> CommissionBreakdown:
-    """组装 8 种报酬 + 累计 + 触发门槛 (P1.5: 改用 8 张全网表查表)
+    """组装 9 种报酬 + 累计 + 触发门槛 (P1.5: 改用 8 张全网表查表, v1.0.12 加 1代4)
 
     性能优化 (跟 PR2 round 3 模式一致):
     - 1. ownBasic 全网表 (已有 compute_own_basic_table_for_month)
     - 2. pair_bonus 全网表 (compute_ancestor_share_dict)
     - 3-8. 6 个新 *_table_for_month (P1.5 新加)
+    - 9. one_gen_four 全网表 (v1.0.12 新加, 父节点凑齐 4 子 = 95 PV)
     - breakdown 改用 .get(bfs_id, 0) 查表, 替代循环 2144 节点 6 个单节点函数
 
     Returns:
-        CommissionBreakdown(bfs_id, month, own_basic, pair_bonus, ..., total, ip_chain, is_optimized, cumulative)
+        CommissionBreakdown(bfs_id, month, own_basic, pair_bonus, ..., one_gen_four, total, ip_chain, is_optimized, cumulative)
     """
     cc = scenario.commission_config
 
@@ -100,7 +103,12 @@ def compute_commission_breakdown(scenario: Scenario, bfs_id: int, month: int) ->
     else:
         points = 0
 
-    total = own_basic + pair_bonus + team_bonus + savings + leader + horiz + retail + Decimal(points)
+    # 9. one_gen_four (v1.0.12: 全网表查表, 父节点凑齐 4 子 = 95 PV 固定)
+    # 业务 always on, 不挂 enable flag (跟 opportunity 一样的处理)
+    one_gen_four_table = compute_one_gen_four_table_for_month(scenario, month)
+    one_gen_four = one_gen_four_table.get(bfs_id, Decimal("0"))
+
+    total = own_basic + pair_bonus + team_bonus + savings + leader + horiz + retail + Decimal(points) + one_gen_four
 
     return CommissionBreakdown(
         bfs_id=bfs_id,
@@ -113,6 +121,7 @@ def compute_commission_breakdown(scenario: Scenario, bfs_id: int, month: int) ->
         horizontal_leader_usd=horiz,
         retail_profit_usd=retail,
         opportunity_points=points,
+        one_gen_four_usd=one_gen_four,
         total_usd=total,
         ip_chain_status=[],
         is_optimized_region=False,

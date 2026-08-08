@@ -39,7 +39,7 @@ _executor = ProcessPoolExecutor(max_workers=14)
 
 
 def compute_overview_all_parallel(scenario: Scenario, total_months: int = 14) -> Dict:
-    """14 月 × 8 报酬 矩阵, 14 worker 真正并行 (P1.6 GIL-free)
+    """14 月 × 9 报酬 矩阵, 14 worker 真正并行 (P1.6 GIL-free, v1.0.12 加 1代4)
 
     P1.6 优化:
     - 先查父进程 LRU, 命中的 month 跳过 executor (2nd call 0.6ms)
@@ -55,7 +55,7 @@ def compute_overview_all_parallel(scenario: Scenario, total_months: int = 14) ->
         }
     """
     fields = ["ownBasic", "pairBonus", "teamBonus", "savings",
-              "leader", "horizontal", "retail", "total"]
+              "leader", "horizontal", "retail", "oneGenFour", "total"]
     months: List[int] = list(range(0, total_months + 1))
     matrix: Dict[str, list] = {f: [None] * (total_months + 1) for f in fields}
 

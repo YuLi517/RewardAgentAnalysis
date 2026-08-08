@@ -2,7 +2,7 @@
 (function() {
   'use strict';
 
-  // === 配色 (复 P3 PR1 + 8 报酬业务分色) ===
+  // === 配色 (复 P3 PR1 + 9 报酬业务分色, v1.0.12 加 oneGenFour) ===
   const COLORS = {
     bg: '#0a0a14',
     line: '#5AA4AE',
@@ -15,13 +15,13 @@
     text: '#fff',
   };
 
-  // 8 报酬固定顺序 (跟 /api/scenarios/{id}/overview 返 camelCase 一致)
+  // 9 报酬固定顺序 (v1.0.12 加 oneGenFour, 跟 /api/scenarios/{id}/overview 返 camelCase 一致)
   const REWARD_FIELDS = ['ownBasic', 'pairBonus', 'teamBonus', 'savings',
-                         'leader', 'horizontal', 'retail', 'total'];
+                         'leader', 'horizontal', 'retail', 'oneGenFour', 'total'];
   // 业务分色 (ownBasic 主色, pairBonus 辅色, teamBonus 金, savings 浅色,
-  //  leader/horizontal/retail 透明版, total 高亮主色)
+  //  leader/horizontal/retail 透明版, oneGenFour 半透缃色, total 高亮主色)
   const REWARD_COLORS = ['#5AA4AE', '#758A99', '#F0C239', '#C0EBD7',
-                         '#5AA4AE80', '#758A9980', '#C0EBD780', '#5AA4AE'];
+                         '#5AA4AE80', '#758A9980', '#C0EBD780', '#F0C23980', '#5AA4AE'];
   const REWARD_LABELS = {
     ownBasic: 'ownBasic (基本佣金)',
     pairBonus: 'pairBonus (对等奖金 7代)',
@@ -30,6 +30,7 @@
     leader: 'leader (领导分红)',
     horizontal: 'horizontal (横向领导)',
     retail: 'retail (零售利润)',
+    oneGenFour: 'oneGenFour (1代4 商品价值 95 PV)',
     total: 'total (合计)',
   };
 
@@ -74,6 +75,7 @@
       leader: state.leader_dividend_usd || '0',
       horizontal: state.horizontal_leader_usd || '0',
       retail: state.retail_profit_usd || '0',
+      oneGenFour: state.one_gen_four_usd || '0',  // v1.0.12
       total: state.total_usd || '0',
     };
   }
@@ -215,7 +217,7 @@
   }
 
   // ============================================================
-  // 14 月 8 折线 (复 PR3, 拆 2 个 canvas: top 4 字段 + bot 4 字段)
+  // 14 月 9 折线 (复 PR3, 拆 2 个 canvas: top 5 字段 + bot 4 字段)
   // ============================================================
 
   function renderLineChart(overviewAll, canvasId, fieldIndices) {
@@ -488,12 +490,12 @@
     const t0 = Date.now();
 
     try {
-      // 1) state M14 bfs_id=0 (root 当月 8 报酬 + 累计)
+      // 1) state M14 bfs_id=0 (root 当月 9 报酬 + 累计)
       const stateResp = await fetch(`/api/scenarios/${id}/state?month=14&bfs_id=0`);
       if (!stateResp.ok) throw new Error('state HTTP ' + stateResp.status);
       const stateM14 = await stateResp.json();
 
-      // 2) overview/all 14 月 × 8 报酬矩阵 (曲线 + 热图)
+      // 2) overview/all 14 月 × 9 报酬矩阵 (曲线 + 热图)
       const allResp = await fetch(`/api/scenarios/${id}/overview/all?total_months=${TOTAL_MONTHS}`);
       if (!allResp.ok) throw new Error('overview/all HTTP ' + allResp.status);
       const overviewAll = await allResp.json();
@@ -526,9 +528,9 @@
       renderSummaryCards(stateM14);
       renderTreeCanvas();
       renderParams(allScenarios.find(x => x.id === id));
-      // Section 5-6: 14 月 8 折线 (top 4 字段 + bot 4 字段)
-      renderLineChart(overviewAll, '#section-line-canvas-top', [0, 1, 2, 3]);
-      renderLineChart(overviewAll, '#section-line-canvas-bot', [4, 5, 6, 7]);
+      // Section 5-6: 14 月 9 折线 (v1.0.12: top 5 ownBasic/pairBonus/teamBonus/savings/oneGenFour + bot 4 leader/horizontal/retail/total)
+      renderLineChart(overviewAll, '#section-line-canvas-top', [0, 1, 2, 3, 7]);
+      renderLineChart(overviewAll, '#section-line-canvas-bot', [4, 5, 6, 8]);
       renderHeatmap(overviewAll);
       renderTop5Bar(top5Data);
       renderTop5Cards(top5Data);

@@ -47,7 +47,7 @@
   }
 
   function updateCards(state, overview) {
-    // overview 8 字段 (跟 scenario_routes.py: get_overview 返的 dict 一致)
+    // overview 9 字段 (v1.0.12 加 oneGenFour, 跟 scenario_routes.py: get_overview 返的 dict 一致)
     const map = {
       ownBasic: overview.ownBasic,
       pairBonus: overview.pairBonus,
@@ -56,6 +56,7 @@
       leader: overview.leader,
       horizontal: overview.horizontal,
       retail: overview.retail,
+      oneGenFour: overview.oneGenFour,
       total: overview.total,
     };
     $$('.p3-cards .glow-card').forEach(card => {
@@ -225,10 +226,10 @@
   const HEATMAP_COLORS = {
     ownBasic: '#5AA4AE', pairBonus: '#758A99', teamBonus: '#F0C239',
     savings: '#C0EBD7', leader: '#5AA4AE80', horizontal: '#758A9980',
-    retail: '#C0EBD780', total: '#5AA4AE',
+    retail: '#C0EBD780', oneGenFour: '#F0C23980', total: '#5AA4AE',
   };
   const HEATMAP_ROWS = ['ownBasic', 'pairBonus', 'teamBonus', 'savings',
-                        'leader', 'horizontal', 'retail', 'total'];
+                        'leader', 'horizontal', 'retail', 'oneGenFour', 'total'];
   const HEATMAP_CELL_W = 32, HEATMAP_CELL_H = 24, HEATMAP_GAP = 4;
   const HEATMAP_LABEL_W = 70, HEATMAP_LABEL_H = 20;
   let heatmapData = null;  // {fields, months, matrix}
@@ -316,7 +317,7 @@
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const data = await resp.json();
       const fields = ['ownBasic', 'pairBonus', 'teamBonus', 'savings',
-                      'leader', 'horizontal', 'retail', 'total'];
+                      'leader', 'horizontal', 'retail', 'oneGenFour', 'total'];
       const body = detail.querySelector('.month-detail-body');
       body.innerHTML = '';
       const f = HEATMAP_ROWS[row];

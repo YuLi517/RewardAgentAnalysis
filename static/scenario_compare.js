@@ -2,17 +2,17 @@
   'use strict';
 
   const FIELDS = ['ownBasic', 'pairBonus', 'teamBonus', 'savings',
-                  'leader', 'horizontal', 'retail', 'total'];
-  // PR2 8 色 + 3 变体 (4 scenario)
+                  'leader', 'horizontal', 'retail', 'oneGenFour', 'total'];
+  // PR2 8 色 + 3 变体 (4 scenario) - v1.0.12 加 oneGenFour
   const SCENARIO_COLORS = [
     { ownBasic: '#5AA4AE', pairBonus: '#758A99', teamBonus: '#F0C239', savings: '#C0EBD7',
-      leader: '#5AA4AE', horizontal: '#758A99', retail: '#C0EBD7', total: '#5AA4AE' },
+      leader: '#5AA4AE', horizontal: '#758A99', retail: '#C0EBD7', oneGenFour: '#F0C23980', total: '#5AA4AE' },
     { ownBasic: '#5AA4AE80', pairBonus: '#758A9980', teamBonus: '#F0C23980', savings: '#C0EBD780',
-      leader: '#5AA4AE80', horizontal: '#758A9980', retail: '#C0EBD780', total: '#5AA4AE80' },
+      leader: '#5AA4AE80', horizontal: '#758A9980', retail: '#C0EBD780', oneGenFour: '#F0C23980', total: '#5AA4AE80' },
     { ownBasic: '#5AA4AECC', pairBonus: '#758A99CC', teamBonus: '#F0C239CC', savings: '#C0EBD7CC',
-      leader: '#5AA4AECC', horizontal: '#758A99CC', retail: '#C0EBD7CC', total: '#5AA4AECC' },
+      leader: '#5AA4AECC', horizontal: '#758A99CC', retail: '#C0EBD7CC', oneGenFour: '#F0C239CC', total: '#5AA4AECC' },
     { ownBasic: '#5AA4AEFF', pairBonus: '#758A99FF', teamBonus: '#F0C239FF', savings: '#C0EBD7FF',
-      leader: '#5AA4AEFF', horizontal: '#758A99FF', retail: '#C0EBD7FF', total: '#5AA4AEFF' },
+      leader: '#5AA4AEFF', horizontal: '#758A99FF', retail: '#C0EBD7FF', oneGenFour: '#F0C239FF', total: '#5AA4AEFF' },
   ];
   const MAX_SELECTED = 4;
   const TOTAL_MONTHS = 14;
@@ -86,7 +86,7 @@
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const W = canvas.width = 900;
-    const H = canvas.height = 500;
+    const H = canvas.height = 600;  // v1.0.12: 9 subplot 3 行 3 列, 高度 500→600
     ctx.fillStyle = '#0a0a14';
     ctx.fillRect(0, 0, W, H);
 
@@ -94,15 +94,15 @@
       ctx.fillStyle = '#758A99';
       ctx.font = '14px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('选 2-4 个 scenario 看 8 报酬 折线对比', W / 2, H / 2);
+      ctx.fillText('选 2-4 个 scenario 看 9 报酬 折线对比', W / 2, H / 2);
       return;
     }
 
-    // 8 subplot 2 行 4 列
-    const subW = W / 4, subH = H / 2;
+    // 9 subplot 3 行 3 列 (v1.0.12: 加 oneGenFour 第 9 种)
+    const subW = W / 3, subH = H / 3;
     const padL = 50, padB = 20, padT = 30, padR = 10;
     FIELDS.forEach((f, idx) => {
-      const col = idx % 4, row = Math.floor(idx / 4);
+      const col = idx % 3, row = Math.floor(idx / 3);
       const x0 = col * subW, y0 = row * subH;
       const plotW = subW - padL - padR, plotH = subH - padT - padB;
 

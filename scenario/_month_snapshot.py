@@ -5,6 +5,8 @@
 - LRU maxsize=15, 14 月全缓存 + 1 预热
 - 第 2 次查询 0 延迟 (LRU 命中)
 - 跟 scenario/breakdown.py compute_commission_breakdown 8 表查询保持一致
+
+v1.0.12: 加 1代4 商品价值 (oneGenFour, 第 9 种报酬)
 """
 from __future__ import annotations
 from collections import defaultdict
@@ -18,6 +20,7 @@ class MonthSnapshot:
     """某月 8 报酬全网表 + 总览 (P1.5 缓存精度, 算 1 次存 LRU)
 
     8 张全网表 + 1 张总览 (8 报酬合计), 算 1 次存, 避免重复 sum
+    v1.0.12: 加 1代4 表 (第 9 种)
     """
     month: int
     own_basic_table: Dict[int, Decimal]
@@ -28,14 +31,15 @@ class MonthSnapshot:
     horizontal_table: Dict[int, Decimal]
     retail_table: Dict[int, Decimal]
     opportunity_table: Dict[int, int]    # opportunity 是积分, 不是 USD
+    one_gen_four_table: Dict[int, Decimal]  # v1.0.12 第 9 种 (1代4 商品价值, 95 PV 固定)
     # 总览 (8 报酬合计), 算 1 次存, 避免重复 sum
     overview: Dict[str, Decimal]
 
 
 def build_month_snapshot(scenario, month: int) -> MonthSnapshot:
-    """算 month 月 8 张表 + 总览, 1 次算 1 个 MonthSnapshot
+    """算 month 月 9 张表 + 总览, 1 次算 1 个 MonthSnapshot
 
-    注: 调用 8 个 table_for_month 函数, 跟 breakdown.py 保持一致
+    注: 调用 9 个 table_for_month 函数, 跟 breakdown.py 保持一致
     """
     from scenario.commission.own_basic import compute_own_basic_table_for_month
     from scenario.commission.pair_bonus import compute_ancestor_share_dict
@@ -45,6 +49,7 @@ def build_month_snapshot(scenario, month: int) -> MonthSnapshot:
     from scenario.commission.horizontal import compute_horizontal_table_for_month
     from scenario.commission.retail_profit import compute_retail_profit_table_for_month
     from scenario.commission.opportunity import compute_opportunity_table_for_month
+    from scenario.commission.one_gen_four import compute_one_gen_four_table_for_month  # v1.0.12
 
     cc = scenario.commission_config
     own_basic_table = compute_own_basic_table_for_month(scenario, month) if cc.enable_own_basic else {}
@@ -55,8 +60,10 @@ def build_month_snapshot(scenario, month: int) -> MonthSnapshot:
     horizontal_table = compute_horizontal_table_for_month(scenario, month) if cc.enable_horizontal_leader else {}
     retail_table = compute_retail_profit_table_for_month(scenario, month) if cc.enable_retail_profit else {}
     opportunity_table = compute_opportunity_table_for_month(scenario, month) if cc.enable_opportunity_points else {}
+    # v1.0.12: 1代4 表 (按月算, 父节点凑齐 4 子 = 95 PV)
+    one_gen_four_table = compute_one_gen_four_table_for_month(scenario, month)
 
-    # 算总览 (8 报酬合计, 跑 1 次)
+    # 算总览 (9 报酬合计, 跑 1 次)
     from scenario.builder import _build_bfs_tree
     nodes = _build_bfs_tree(scenario.tree_shape)
     aggregate: Dict[str, Decimal] = defaultdict(lambda: Decimal("0"))
@@ -68,10 +75,12 @@ def build_month_snapshot(scenario, month: int) -> MonthSnapshot:
         aggregate["leader"] += leader_table.get(bfs_id, Decimal("0"))
         aggregate["horizontal"] += horizontal_table.get(bfs_id, Decimal("0"))
         aggregate["retail"] += retail_table.get(bfs_id, Decimal("0"))
+        aggregate["oneGenFour"] += one_gen_four_table.get(bfs_id, Decimal("0"))  # v1.0.12
+    # total 包含 9 报酬 (8 + 1代4)
     aggregate["total"] = (
         aggregate["ownBasic"] + aggregate["pairBonus"] + aggregate["teamBonus"]
         + aggregate["savings"] + aggregate["leader"] + aggregate["horizontal"]
-        + aggregate["retail"]
+        + aggregate["retail"] + aggregate["oneGenFour"]  # v1.0.12
     )
 
     return MonthSnapshot(
@@ -84,5 +93,6 @@ def build_month_snapshot(scenario, month: int) -> MonthSnapshot:
         horizontal_table=horizontal_table,
         retail_table=retail_table,
         opportunity_table=opportunity_table,
+        one_gen_four_table=one_gen_four_table,  # v1.0.12
         overview=dict(aggregate),
     )

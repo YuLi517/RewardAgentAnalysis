@@ -109,7 +109,7 @@ body {
     0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* --- compact 卡片 (8 报酬小卡片) --- */
+/* --- compact 卡片 (9 报酬小卡片, v1.0.12 加 oneGenFour) --- */
 .glow-card-compact {
   border-radius: 8px;
   padding: 2px;                           /* 小卡片 2px 光带 */
@@ -129,7 +129,7 @@ body {
   margin-bottom: 4px;
 }
 
-/* --- 8 报酬卡片 grid --- */
+/* --- 9 报酬卡片 grid (4 列, 9 卡片自然 wrap 3 行 4+4+1) --- */
 .p3-cards {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

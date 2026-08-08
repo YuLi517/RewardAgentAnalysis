@@ -153,8 +153,14 @@ def create_scenario(body: ScenarioIn, db: Session = Depends(get_db)) -> Dict[str
     from scenario.locks import compute_one_gen_four_locks, serialize_locks
     locks = compute_one_gen_four_locks(s)
     s._db_locks_json = serialize_locks(locks)
+    # v1.0.16: 预计算全树 2144 节点 + bulk INSERT 到 scenario_nodes 表
+    # 业务: 节点关系持久化, 任意 bfs_id 可查, 模板升级不影响旧 scenario
+    from scenario.nodes import compute_scenario_nodes, bulk_insert_scenario_nodes
+    nodes = compute_scenario_nodes(s)
+    # 先 save scenario 拿 id, 再 bulk insert nodes (FK 依赖)
     repo = ScenarioRepository(db)
     scenario_id = repo.save(s)
+    bulk_insert_scenario_nodes(db, scenario_id, nodes)
     return {"id": scenario_id, "name": body.name}
 
 

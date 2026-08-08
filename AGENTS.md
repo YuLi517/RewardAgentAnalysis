@@ -649,6 +649,58 @@
   - `reset_test_data` 本来就是结构检测 (main.py)
 
 
+### 2.16a 节点表持久化 (v1.0.16 拍板, 2026-08-08) — 用户可查每个点位
+
+- **业务背景**: v1.0.16 (用户 2026-08-08 第 7 轮澄清)
+  - 之前 2144 节点由 `_build_bfs_tree` 动态生成, 业务不稳定 (模板升级影响旧 scenario)
+  - 用户诉求: 随时查每个点位 (level/parent/region), 验证 commission 计算正确性
+  - 拍板: 节点表存, POST scenario 时 1 次算全树 + bulk INSERT 2144 行
+- **业务规则 (v1.0.16 拍板)**:
+  1. **节点表存**: `scenario_nodes` 表 (scenario_id, bfs_id, level, parent_bfs, slot_line_id, region_id, join_week, join_month, color_index)
+  2. **POST 预计算**: scenario POST 时 1 次算全树 + bulk INSERT 2144 行 (~50ms, 业务可接受)
+  3. **稳定**: 模板升级不影响旧 scenario (节点关系已快照)
+  4. **可查**: 任意 bfs_id 都能 SELECT 出 level/parent/slot/region (4 INDEX: level/parent/region/unique)
+  5. **可验证**: 任何 1 节点 4 子 + commission 计算依据都能查
+  6. **lazy backfill**: 旧 scenario 没 nodes 表数据, 首次 GET 触发 backfill (算 + bulk INSERT)
+- **算法 (scenario/nodes.py)**:
+  - `compute_scenario_nodes(scenario)`: 全网 2144 节点, 跟 _build_bfs_tree 输出 dict 一致
+  - `bulk_insert_scenario_nodes(db, scenario_id, nodes)`: 1 次 bulk INSERT 2144 行, ~50ms
+  - `load_scenario_nodes(db, scenario_id)`: 1 次 SELECT 全树, 转 dict
+  - `load_single_node(db, scenario_id, bfs_id)`: 查单节点
+  - `load_children_of(db, scenario_id, parent_bfs)`: 查某父所有子
+  - `load_nodes_by_level(db, scenario_id, level)`: 查某层所有节点
+  - `load_nodes_by_region(db, scenario_id, region_id)`: 查某大区所有节点
+  - `count_nodes(db, scenario_id)`: 节点总数
+  - `has_nodes(db, scenario_id)`: 业务上 scenario 有 nodes 数据?
+- **DB schema**:
+  - `scenario_nodes` 表 (10 列): id PK, scenario_id FK, bfs_id, level, parent_bfs, slot_line_id, region_id, join_week, join_month, color_index
+  - 4 INDEX: `(scenario_id, bfs_id)` UNIQUE, `(scenario_id, level)`, `(scenario_id, parent_bfs)`, `(scenario_id, region_id)`
+  - FK ON DELETE CASCADE (scenario 删, 节点自动删)
+- **业务集成**:
+  - `scenario/commission/_helpers.py` `get_nodes_and_children`: 优先查 DB scenario_nodes 表, fallback `_build_bfs_tree` 动态算
+  - `scenario/repository.py` `load`: lazy backfill (旧 scenario 节点表空时 算 + bulk INSERT)
+  - `scenario_routes.py` `create_scenario` POST: 预计算 + bulk INSERT 节点到 DB
+- **业务可视化 (tools/inspect_scenario_nodes.py)**:
+  - `python tools/inspect_scenario_nodes.py [scenario_id]`: 列 scenario 总览 (节点数, 按 level 分布, 4 大区节点数)
+  - `python tools/inspect_scenario_nodes.py [scenario_id] [bfs_id]`: 查某 bfs_id 节点详情 + 父 + 子
+  - `python tools/inspect_scenario_nodes.py [scenario_id] level=5`: 列 L5 所有节点
+  - `python tools/inspect_scenario_nodes.py [scenario_id] parent=10`: 列 parent=10 的所有子
+  - `python tools/inspect_scenario_nodes.py [scenario_id] region=2`: 列 region 2 (大区 2) 所有节点
+- **业务示例 (binary 2144 节点, scenario 134)**:
+  - root bfs_id=1: level=0, parent_bfs=-1, slot=0, region=0, 4 子 = [2, 3, 4, 5] (L1 4 大区)
+  - L1 父 bfs_id=2: level=1, parent_bfs=1, slot=1, region=2, 2 子 = [6, 10]
+  - L2 bfs_id=6: level=2, parent_bfs=2, slot=1, region=2, 2 子 = [14, 22] (L3 跨层)
+  - L3: 16 节点 (位反转 2 叉)
+  - region 2: 536 节点 (L1 父 bfs_id=2 + 子树)
+- **性能**:
+  - POST scenario: 1 次 bulk INSERT 2144 行 ~50ms (跟 v1.0.15 总时间 300ms 比 +50ms)
+  - GET /api/scenarios/{id}/state, /overview: 用 DB nodes 查表, ~1ms per bfs_id
+  - DB 体积: 137 scenario × 2144 节点 × ~30 bytes = 8.8MB (业务可接受)
+- **E2E**: `_e2e_v1016.py` 8 个 assertion (新 scenario POST 节点表 + 旧 lazy backfill + inspect 4 种模式 + commission 一致)
+- **改节点表必查**: `models.py` ScenarioNode ORM + `scenario/nodes.py` 7 函数 + `scenario/commission/_helpers.py` get_nodes_and_children + `scenario/repository.py` load lazy backfill + `scenario_routes.py` create_scenario POST 预计算
+- **改 .gitignore**: v1.0.16 加 `!scenario/commission/_helpers.py` 例外 (修 v1.0.11 _* 误伤)
+
+
 ### 2.17 储蓄奖金 (Savings Bonus, PR #73 拍板, 2026-08-06)
 
 **业务 (用户 2026-08-06 拍板原话)**:

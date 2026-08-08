@@ -217,6 +217,8 @@ class ScenarioRepository:
 
         v1.0.14: lazy backfill locks (旧 134 scenario 没 one_gen_four_locks_json 字段)
                  首次 GET 触发 backfill (算 + UPDATE), 后续直接读
+        v1.0.16: lazy backfill nodes (旧 137 scenario 没 scenario_nodes 行)
+                 首次 GET 触发 backfill (算 + bulk INSERT 2144 行)
         """
         # 1. 查类级别 cache (跨请求复用)
         cached = ScenarioRepository._process_cache.get(scenario_id)
@@ -228,7 +230,7 @@ class ScenarioRepository:
             return None
         s = _orm_to_dataclass(row)
         if s is not None:
-            # v1.0.14: lazy backfill (旧 scenario 字段 NULL 时)
+            # v1.0.14: lazy backfill locks (旧 scenario 字段 NULL 时)
             if row.one_gen_four_locks_json is None:
                 from scenario.locks import compute_one_gen_four_locks, serialize_locks
                 locks = compute_one_gen_four_locks(s)
@@ -236,6 +238,11 @@ class ScenarioRepository:
                 row.one_gen_four_locks_json = json_str
                 self.session.commit()
                 s._db_locks_json = json_str
+            # v1.0.16: lazy backfill nodes (旧 scenario 没 scenario_nodes 行)
+            from scenario.nodes import has_nodes, bulk_insert_scenario_nodes, compute_scenario_nodes
+            if not has_nodes(self.session, scenario_id):
+                nodes = compute_scenario_nodes(s)
+                bulk_insert_scenario_nodes(self.session, scenario_id, nodes)
             ScenarioRepository._process_cache.set(scenario_id, s)
         return s
 

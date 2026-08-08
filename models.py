@@ -552,69 +552,72 @@ class Scenario(Base):
     # nullable=True: 旧 134 个 scenario 没这字段, 首次 GET 时 lazy backfill
     one_gen_four_locks_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+
+# ============== v1.0.16 节点表 (2144 节点 × N scenarios) ==============
+
+class ScenarioNode(Base):
+    """v1.0.16 (2026-08-08): 场景节点表 — 完整树形持久化 (用户随时查每个点位)
+
+    业务动机 (用户 2026-08-08, 第 7 轮澄清):
+      - 之前 scenario 树形 2144 节点是 _build_bfs_tree 动态生成的
+      - 用户担忧: 模板升级时, 旧 scenario 节点关系会变, 业务不稳定
+      - 用户诉求: 随时查每个点位 (level/parent/region), 验证 commission 计算正确性
+      - 拍板: 节点表存, POST scenario 时 1 次算全树 + bulk INSERT 2144 行
+
+    设计:
+      - PK: (scenario_id, bfs_id) 联合主键, 业务上每个 scenario 内 bfs_id 唯一
+      - FK: scenario_id → scenarios.id ON DELETE CASCADE
+      - INDEX: (scenario_id, level), (scenario_id, parent_bfs), (scenario_id, region_id)
+        业务可视化查"该层所有节点" / "该父的所有子" / "该大区所有节点" 高效
+      - 字段: 跟 _build_bfs_tree 节点 dict 完全一致 (bfs_id/level/parent_bfs/slot_line_id/region_id/join_week/join_month/color_index)
+
+    性能:
+      - POST scenario: 1 次 bulk INSERT 2144 行, ~50ms
+      - 查任意 bfs_id: SELECT WHERE scenario_id=? AND bfs_id=?, ~1ms
+      - DB 体积: 137 scenario × 2144 节点 × ~30 bytes = 8.8MB (业务可接受)
+    """
+    __tablename__ = "scenario_nodes"
+
+    # PK 自增 (联合唯一约束加在 (scenario_id, bfs_id) 上)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # FK 到 scenarios
+    scenario_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("scenarios.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # 节点身份 (scenario 内唯一)
+    bfs_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    # 树形 metadata (跟 _build_bfs_tree 节点 dict 一致)
+    level: Mapped[int] = mapped_column(Integer, nullable=False)
+    parent_bfs: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # NULL for root
+    slot_line_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    region_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    join_week: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    join_month: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    color_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # 联合唯一约束 (scenario_id, bfs_id)
+    __table_args__ = (
+        Index("idx_scenario_nodes_unique", "scenario_id", "bfs_id", unique=True),
+        Index("idx_scenario_nodes_level", "scenario_id", "level"),
+        Index("idx_scenario_nodes_parent", "scenario_id", "parent_bfs"),
+        Index("idx_scenario_nodes_region", "scenario_id", "region_id"),
+    )
+
     def to_dict(self) -> dict:
-        """侧栏列表 / 详情页用的字段拍平 (含 JSON 反序列化)
-        业务注意: JSON object key 总是 string, 但 TreeShape/Growth 业务字段要求 int key,
-        这里在 to_dict 时把 layer_counts / *_tier_rates / *_tiers 的 key 统一转 int,
-        保持跟 scenario/builder.py 输入一致 (Dict[int, int] 而不是 Dict[str, int])
-        """
-        import json
-        # layer_counts: Dict[int, int] (TreeShape 要求 int key)
-        layer_counts_raw = json.loads(self.tree_layer_counts_json)
-        layer_counts = {int(k): v for k, v in layer_counts_raw.items()}
-        # *_tier_rates / *_tiers: Dict[int, float] 或 Dict[int, int] (业务上 PV 值是 int)
-        def _int_keys(d):
-            return {int(k): v for k, v in d.items()}
+        """节点转 dict (跟 _build_bfs_tree 节点 dict 字段一致)"""
         return {
-            "id": self.id,
-            "name": self.name,
-            "created_at": self.created_at,
-            "tree_shape": {
-                "fork_type": self.tree_fork_type,
-                "max_level": self.tree_max_level,
-                "layer_counts": layer_counts,
-            },
-            "growth": {
-                "nodes_per_region_per_week": self.growth_nodes_per_region_per_week,
-                "n_regions": self.growth_n_regions,
-                "join_strategy": self.growth_join_strategy,
-                "weeks_per_month": self.growth_weeks_per_month,
-            },
-            "revenue": {
-                "initial_pv": self.revenue_initial_pv,
-                "monthly_renew_pv": self.revenue_monthly_renew_pv,
-                "color_rule": self.revenue_color_rule,
-                "color_names": json.loads(self.revenue_color_names_json),
-            },
-            "commission_config": {
-                "enable_retail_profit": self.cc_enable_retail_profit,
-                "enable_team_bonus": self.cc_enable_team_bonus,
-                "team_bonus_tier_rates": _int_keys(json.loads(self.cc_team_bonus_tier_rates_json)),
-                "team_bonus_window_weeks": self.cc_team_bonus_window_weeks,
-                "enable_own_basic": self.cc_enable_own_basic,
-                "own_basic_rate": self.cc_own_basic_rate,
-                "own_basic_line_pv_cap": self.cc_own_basic_line_pv_cap,
-                "enable_savings": self.cc_enable_savings,
-                "savings_usd_threshold": self.cc_savings_usd_threshold,
-                "savings_rate": self.cc_savings_rate,
-                "savings_cap_usd": self.cc_savings_cap_usd,
-                "enable_pair_bonus": self.cc_enable_pair_bonus,
-                "pair_bonus_ratios": _int_keys(json.loads(self.cc_pair_bonus_ratios_json)),
-                "pair_bonus_4th_usd_threshold": self.cc_pair_bonus_4th_usd_threshold,
-                "pair_bonus_5th_usd_threshold": self.cc_pair_bonus_5th_usd_threshold,
-                "enable_leader_dividend": self.cc_enable_leader_dividend,
-                "leader_dividend_threshold_pv": self.cc_leader_dividend_threshold_pv,
-                "leader_dividend_share_usd": self.cc_leader_dividend_share_usd,
-                "leader_dividend_tiers": _int_keys(json.loads(self.cc_leader_dividend_tiers_json)),
-                "enable_horizontal_leader": self.cc_enable_horizontal_leader,
-                "horizontal_leader_share_usd": self.cc_horizontal_leader_share_usd,
-                "horizontal_leader_tiers": _int_keys(json.loads(self.cc_horizontal_leader_tiers_json)),
-                "enable_opportunity_points": self.cc_enable_opportunity_points,
-            },
-            "total_target": self.total_target,
-            "total_weeks": self.total_weeks,
-            "total_months": self.total_months,
+            "bfs_id": self.bfs_id,
+            "level": self.level,
+            "parent_bfs": self.parent_bfs if self.parent_bfs is not None else -1,
+            "slot_line_id": self.slot_line_id,
+            "region_id": self.region_id,
+            "join_week": self.join_week,
+            "join_month": self.join_month,
+            "color_index": self.color_index,
         }
 
     def __repr__(self):
-        return f"<Scenario id={self.id} name={self.name!r} target={self.total_target}>"
+        return (f"<ScenarioNode scenario_id={self.scenario_id} bfs_id={self.bfs_id} "
+                f"level={self.level} parent_bfs={self.parent_bfs} region={self.region_id}>")

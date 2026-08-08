@@ -3934,7 +3934,12 @@ chatObserver.observe(chatEl, { childList: true });
 //   不需要 registerSlash);只有 _openSkillModalById 找不到对应 option 时
 //   (例如 data-action="tree" 走 /tree slash,不是 skill)才 fallback 到 send() 触发 /tree。
 document.querySelectorAll('.welcome-card').forEach(card => {
-  card.addEventListener('click', () => {
+  card.addEventListener('click', (e) => {
+    // ★ v1.0.6: 若是 <a target="_blank"> 链接卡片(如 4 个 scenario 工具),
+    //   走浏览器默认行为,不被 click handler 拦下来当 slash command 发送
+    if (card.tagName === 'A' && card.hasAttribute('href')) {
+      return;  // 让 <a> 默认行为生效 (target=_blank → window.open)
+    }
     const action = card.dataset.action;
     if (action === 'new_session') {
       newSession();

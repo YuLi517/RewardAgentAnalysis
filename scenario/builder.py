@@ -17,7 +17,18 @@ def _build_bfs_tree(tree_shape: TreeShape, growth: Optional[Growth] = None) -> D
     """PR2 收尾: growth 是可选 (旧测试调用单参)"""
     """构 BFS 树 + L3+ 节点 round_robin 排 join_week/month
     业务上 L3+ 节点 (新成员) 每周 4 大区各 NODES_PER_REGION_PER_WEEK 加入
+
+    v1.0.9 (2026-08-08): binary / quaternary fork_type 走 JSON 模板
+      - binary:     json/binarytree_4093.json     → 取前 total_target 节点
+      - quaternary: json/quaternarytree_87381.json → 取前 total_target 节点
+      - ternary:    维持原 PR #18 位反转算法
     """
+    from scenario.json_tree_loader import is_template_fork_type, build_bfs_nodes_from_template
+    if is_template_fork_type(tree_shape.fork_type):
+        # 走 JSON 模板: total = sum(layer_counts.values()) = 用户想要的节点数
+        n = sum(tree_shape.layer_counts.values())
+        return build_bfs_nodes_from_template(tree_shape.fork_type, n)
+
     nodes: Dict[int, dict] = {}
     layer_counts = tree_shape.layer_counts
     total = sum(layer_counts.values())

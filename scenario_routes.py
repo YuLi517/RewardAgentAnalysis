@@ -264,7 +264,7 @@ def export_scenario_csv(scenario_id: int,
     if s is None:
         raise HTTPException(status_code=404, detail=f"scenario {scenario_id} not found")
     fields = ["ownBasic", "pairBonus", "teamBonus", "savings",
-              "leader", "horizontal", "retail", "oneGenFour", "total"]
+              "leader", "horizontal", "oneGenFour", "total"]
     lines = ["scenario_id,scenario_name,month,field,value"]
     for m in range(0, total_months + 1):
         ov = compute_month_overview(s, month=m)

@@ -39,7 +39,7 @@
         <div class="pdf-section" data-page="2">
           <h2>📋 执行摘要</h2>
           <div class="section-content">
-            <p>9 种报酬 — 月 14 累计 (bfs_id=0 root):</p>
+            <p>8 种报酬 — 月 14 累计 (bfs_id=0 root):</p>
             <div class="pdf-cards" id="summary-cards">
               <div class="glow-card glow-card-compact" data-field="ownBasic"><div class="glow-border"></div><div class="glow-inner"><div class="label">ownBasic</div><div class="val">—</div></div></div>
               <div class="glow-card glow-card-compact" data-field="pairBonus"><div class="glow-border"></div><div class="glow-inner"><div class="label">pairBonus</div><div class="val">—</div></div></div>
@@ -47,8 +47,7 @@
               <div class="glow-card glow-card-compact" data-field="savings"><div class="glow-border"></div><div class="glow-inner"><div class="label">savings</div><div class="val">—</div></div></div>
               <div class="glow-card glow-card-compact" data-field="leader"><div class="glow-border"></div><div class="glow-inner"><div class="label">leader</div><div class="val">—</div></div></div>
               <div class="glow-card glow-card-compact" data-field="horizontal"><div class="glow-border"></div><div class="glow-inner"><div class="label">horizontal</div><div class="val">—</div></div></div>
-              <div class="glow-card glow-card-compact" data-field="retail"><div class="glow-border"></div><div class="glow-inner"><div class="label">retail</div><div class="val">—</div></div></div>
-              <div class="glow-card glow-card-compact" data-field="oneGenFour"><div class="glow-border"></div><div class="glow-inner"><div class="label">oneGenFour</div><div class="val">—</div></div></div>
+              <div class="glow-card glow-card-compact" data-field="oneGenFour"><div class="glow-border"></div><div class="glow-inner"><div class="label">1代4 产品奖金</div><div class="val">—</div></div></div>
               <div class="glow-card glow-card-compact glow-card-highlight" data-field="total"><div class="glow-border"></div><div class="glow-inner"><div class="label">total</div><div class="val">—</div></div></div>
             </div>
             <p class="summary-avg">月均 (14 月): <span id="summary-avg">—</span></p>
@@ -107,30 +106,30 @@
           </div>
         </div>
 
-        <!-- Page 5: 14 月 9 报酬曲线 (上半 5 个) -->
+        <!-- Page 5: 14 月 8 报酬曲线 (上半 4 个) -->
         <div class="pdf-section" data-page="5">
-          <h2>📈 14 月 9 报酬增长曲线 (上)</h2>
+          <h2>📈 14 月 8 报酬增长曲线 (上)</h2>
           <div class="canvas-wrap">
             <canvas id="section-line-canvas-top" width="800" height="300"></canvas>
-            <p class="canvas-hint">x = 月 (0-14), y = USD; 5 折线 (ownBasic/pairBonus/teamBonus/savings/oneGenFour)</p>
+            <p class="canvas-hint">x = 月 (0-14), y = USD; 4 折线 (ownBasic/pairBonus/teamBonus/savings)</p>
           </div>
         </div>
 
-        <!-- Page 6: 14 月 9 报酬曲线 (下半 4 个) -->
+        <!-- Page 6: 14 月 8 报酬曲线 (下半 4 个) -->
         <div class="pdf-section" data-page="6">
-          <h2>📈 14 月 9 报酬增长曲线 (下)</h2>
+          <h2>📈 14 月 8 报酬增长曲线 (下)</h2>
           <div class="canvas-wrap">
             <canvas id="section-line-canvas-bot" width="800" height="300"></canvas>
-            <p class="canvas-hint">x = 月 (0-14), y = USD; 4 折线 (leader/horizontal/retail/total)</p>
+            <p class="canvas-hint">x = 月 (0-14), y = USD; 4 折线 (leader/horizontal/oneGenFour/total)</p>
           </div>
         </div>
 
-        <!-- Page 7: 14 月 9 报酬热图 -->
+        <!-- Page 7: 14 月 8 报酬热图 -->
         <div class="pdf-section" data-page="7">
-          <h2>📊 14 月 9 报酬热图</h2>
+          <h2>📊 14 月 8 报酬热图</h2>
           <div class="canvas-wrap">
-            <canvas id="section-heatmap-canvas" width="700" height="320"></canvas>
-            <p class="canvas-hint">9 行 × 14 列, 颜色深 = 金额高 (v1.0.12 加 oneGenFour: #F0C23980 半透缃色)</p>
+            <canvas id="section-heatmap-canvas" width="700" height="280"></canvas>
+            <p class="canvas-hint">8 行 × 14 列, 颜色深 = 金额高 (v1.0.15 retail 改 1代4 产品奖金: #F0C23980 半透缃色)</p>
           </div>
         </div>
 

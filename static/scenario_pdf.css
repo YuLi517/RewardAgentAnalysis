@@ -71,7 +71,7 @@
     0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* compact (9 报酬小卡片, PDF 深色背景要跟白底容器对比, v1.0.12 加 oneGenFour) */
+/* compact (8 报酬小卡片, PDF 深色背景要跟白底容器对比, v1.0.15 retail 改 1代4 产品奖金) */
 .glow-card-compact {
   border-radius: 8px;
   padding: 2px;

@@ -317,36 +317,41 @@
   - `skills/pair_commission.py` _settle_node 应用
 - 改 commission 算法 / 配对规则必查 §2.10 + §2.11 + §5.32 + §5.33 + §5.34 列出的所有引用点
 
-### 2.11c 1代4 商品价值 (v1.0.12 + v1.0.13 拍板, 2026-08-08) — 新第 9 种报酬, 凑齐 + 1 月触发
+### 2.11c 1代4 产品奖金 (v1.0.12 + v1.0.13 + v1.0.14 + v1.0.15 拍板, 2026-08-08)
 
-- **业务背景**: 替代 team_bonus 5 层 ancestor/descendant 重复累加 bug 展示 (v1.0.12 拍板),
-              v1.0.13 加首次触发延迟 + 1 月 (凑齐后下个月起持续),
-              v1.0.14 加 4 子锁定 (DB JSON 持久化, 不再每次动态 BFS)
-- **业务规则 (用户 2026-08-08, 5 轮澄清拍板)**:
+- **业务背景**:
+  - v1.0.12: 替代 team_bonus 5 层 ancestor/descendant 重复累加 bug 展示, 新第 9 种报酬
+  - v1.0.13: 首次触发延迟 + 1 月 (凑齐后下个月起持续, 子节点 100 PV 递延)
+  - v1.0.14: 4 子锁定 (DB JSON 持久化, 不再每次动态 BFS)
+  - v1.0.15: 金额 95 PV → **190 USD** (PV×2 转换, 统一 USD 单位, 替代 retail 卡片)
+- **业务规则 (用户 2026-08-08, 6 轮澄清拍板)**:
   1. **触发条件**: 父节点 (非叶) "长出树" BFS 凑齐 4 个最近子 (slot 1-5 顺序, 跨层)
-  2. **奖励金额**: 95 PV 固定 (公司随机商品 80-110 PV 取中值)
-  3. **触发频率**: 凑齐 4 子后下个月起, 每月都拿 95 PV (持续, v1.0.13 拍板)
+  2. **奖励金额**: 190 USD 固定 (公司随机商品 80-110 PV 取中值 × 2 USD/PV, v1.0.15)
+  3. **触发频率**: 凑齐 4 子后下个月起, 每月都拿 190 USD (持续, v1.0.13 拍板)
   4. **首次触发延迟 + 1 月** (v1.0.13 拍板):
      - 凑齐 4 子那个月不算 (还在 "子节点 100 PV 递延" 业务中)
      - 下个月起才触发 (4 子都至少 1 次完成 100 PV 递延)
      - 业务示例: 3月第2周 A、B 挂入父 F, 3月第3周 C、D 挂入父 F (凑齐 4 子)
        → 4月第3周 C、D 完成 100 PV 递延 → 4月第3周 (M_first + 1) 触发
-  5. **后续月持续**: 每月都拿 95 (4 子都还在线 + 都续费是默认, 不单独检查续费状态)
+  5. **后续月持续**: 每月都拿 190 USD (4 子都还在线 + 都续费是默认, 不单独检查续费状态)
   6. **4 子关系固定** (v1.0.14 拍板, 用户担忧动态 BFS 可能出错):
      - 凑齐 4 子时刻, 4 个 bfs_id + m_first 锁定到 scenario.one_gen_four_locks_json
      - 1代4 计算 = 查表 locks, 0 BFS, 0 误差
      - scenario POST 时预计算 locks 写 DB, lazy backfill 旧 scenario
+  7. **替代 retail 业务** (v1.0.15 拍板):
+     - retail 卡片改 label "1代4 产品奖金" + data-field=oneGenFour
+     - 删 v1.0.12 加的独立 oneGenFour 卡片, 9→8 卡片
+     - 业务上 retail_profit 算法仍算 (cc_enable_retail_profit),但前端不显示
 - **算法 (scenario/commission/one_gen_four.py + scenario/locks.py)**:
-  - `ONE_GEN_FOUR_GOODS_PV = Decimal("95")` (固定)
+  - `ONE_GEN_FOUR_GOODS_USD = Decimal("190")` (v1.0.15, 改 95 PV, 统一 USD)
   - `scenario/locks.py`:
     - `compute_one_gen_four_locks(scenario)`: 全网 1次 BFS, 算所有父节点 4 子 + m_first
     - `serialize_locks(locks)`: dict → JSON string
     - `deserialize_locks(json_str)`: JSON string → dict
     - `get_lock_for_node(scenario, bfs_id)`: 内存 LRU cache 优先, DB JSON 次之, 都缺时 backfill
-  - `_get_first_complete_month` 已废弃 (v1.0.14 改用 `get_lock_for_node`)
   - `compute_one_gen_four_for_node(scenario, bfs_id, month)`:
     - 查 `get_lock_for_node(scenario, bfs_id)` 拿 4 子 + m_first
-    - 触发月 = month >= m_first + 1 → 95 PV, 否则 0
+    - 触发月 = month >= m_first + 1 → 190 USD, 否则 0
   - `compute_one_gen_four_table_for_month(scenario, month)`: 全网表 + LRU cache
 - **业务存储 (DB JSON 字段)**:
   - `scenarios.one_gen_four_locks_json: Text` (nullable=True)
@@ -358,14 +363,15 @@
   - `tools/inspect_one_gen_four_locks.py [scenario_id] [bfs_id]`: 看某父节点的 4 子 + m_first
   - 例: bfs_id=1 (root) 4 子 = [2, 3, 4, 5], m_first=0, 触发月份范围 = 1-15
 - **业务场景验证 (binary 2144 节点, weeks_per_month=4)**:
-  - E2E 验: month 0 = $0 (凑齐当月不触发), month 1-14 = $48,355 (持续)
-  - root bfs_id=1: month 0 = $0, month 1 = $95
-  - 14 月累计 = 14 × $48,355 = **$676,970** (v1.0.12 是 15 × $48,355 = $725,325, 差 1 月 $48,355)
+  - E2E 验: month 0 = $0 (凑齐当月不触发), month 1-14 = $96,710 (持续, v1.0.15 190 USD)
+  - root bfs_id=1: month 0 = $0, month 1 = $190
+  - 14 月累计 = 14 × $96,710 = **$1,353,940** (v1.0.14 是 14 × $48,355 = $676,970, 翻倍)
 - **E2E**:
   - `_e2e_v1013.py` 验 1 月延迟生效 (6 个 assertion 全过)
   - `_e2e_v1014.py` 验 4 子锁定 (7 个 assertion: DB 写入 / 数据一致 / lazy backfill / 可视化)
+  - `_e2e_v1015.py` 验 190 USD 金额 (新增, 8 字段 + 金额翻倍)
 - **改 1代4 算法必查**: `scenario/commission/one_gen_four.py` + `scenario/locks.py` + `scenario/breakdown.py` + `scenario/_month_snapshot.py` + `scenario_routes.py` 4 个 endpoint
-- **改前端 9 卡片展示必查**: `static/scenario.html/.js` + `static/scenario_compare.html/.js` + `static/scenario_library.html/.js` + `static/scenario_pdf.html/.js` 4 页面 8→9 卡片 (v1.0.12 已做)
+- **改前端 8 卡片展示必查**: `static/scenario.html/.js` + `static/scenario_compare.html/.js` + `static/scenario_library.html/.js` + `static/scenario_pdf.html/.js` 4 页面 retail → 1代4 产品奖金 (v1.0.15 9→8 卡片)
 
 ### 2.12 下单管理 (PR #70 拍板, 2026-07-27)
 

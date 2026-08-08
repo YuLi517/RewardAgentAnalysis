@@ -41,14 +41,14 @@
           <div class="section-content">
             <p>8 种报酬 — 月 14 累计 (bfs_id=0 root):</p>
             <div class="pdf-cards" id="summary-cards">
-              <div class="pdf-card" data-field="ownBasic"><div class="label">ownBasic</div><div class="val">—</div></div>
-              <div class="pdf-card" data-field="pairBonus"><div class="label">pairBonus</div><div class="val">—</div></div>
-              <div class="pdf-card" data-field="teamBonus"><div class="label">teamBonus</div><div class="val">—</div></div>
-              <div class="pdf-card" data-field="savings"><div class="label">savings</div><div class="val">—</div></div>
-              <div class="pdf-card" data-field="leader"><div class="label">leader</div><div class="val">—</div></div>
-              <div class="pdf-card" data-field="horizontal"><div class="label">horizontal</div><div class="val">—</div></div>
-              <div class="pdf-card" data-field="retail"><div class="label">retail</div><div class="val">—</div></div>
-              <div class="pdf-card pdf-card-highlight" data-field="total"><div class="label">total</div><div class="val">—</div></div>
+              <div class="glow-card glow-card-compact" data-field="ownBasic"><div class="glow-border"></div><div class="glow-inner"><div class="label">ownBasic</div><div class="val">—</div></div></div>
+              <div class="glow-card glow-card-compact" data-field="pairBonus"><div class="glow-border"></div><div class="glow-inner"><div class="label">pairBonus</div><div class="val">—</div></div></div>
+              <div class="glow-card glow-card-compact" data-field="teamBonus"><div class="glow-border"></div><div class="glow-inner"><div class="label">teamBonus</div><div class="val">—</div></div></div>
+              <div class="glow-card glow-card-compact" data-field="savings"><div class="glow-border"></div><div class="glow-inner"><div class="label">savings</div><div class="val">—</div></div></div>
+              <div class="glow-card glow-card-compact" data-field="leader"><div class="glow-border"></div><div class="glow-inner"><div class="label">leader</div><div class="val">—</div></div></div>
+              <div class="glow-card glow-card-compact" data-field="horizontal"><div class="glow-border"></div><div class="glow-inner"><div class="label">horizontal</div><div class="val">—</div></div></div>
+              <div class="glow-card glow-card-compact" data-field="retail"><div class="glow-border"></div><div class="glow-inner"><div class="label">retail</div><div class="val">—</div></div></div>
+              <div class="glow-card glow-card-compact glow-card-highlight" data-field="total"><div class="glow-border"></div><div class="glow-inner"><div class="label">total</div><div class="val">—</div></div></div>
             </div>
             <p class="summary-avg">月均 (14 月): <span id="summary-avg">—</span></p>
             <p class="summary-glossary">业务术语: 1 区/2 区 (5 子区递归累加) / 对等奖 (7 代配对) / 团队培育奖金 (4 档精确匹配)</p>
@@ -68,31 +68,35 @@
         <div class="pdf-section" data-page="4">
           <h2>⚙️ 参数配置</h2>
           <div class="pdf-params" id="params-grid">
-            <div class="beam-wrap" data-section="tree">
-              <div class="beam-content">
+            <div class="glow-card" data-section="tree">
+              <div class="glow-border"></div>
+              <div class="glow-inner">
                 <h3>🌳 TreeShape (树形)</h3>
                 <div class="form-row"><span>fork_type</span><span class="val" id="p-fork">—</span></div>
                 <div class="form-row"><span>max_level</span><span class="val" id="p-maxlv">—</span></div>
                 <div class="form-row"><span>total_target</span><span class="val" id="p-target">—</span></div>
               </div>
             </div>
-            <div class="beam-wrap" data-section="growth">
-              <div class="beam-content">
+            <div class="glow-card" data-section="growth">
+              <div class="glow-border"></div>
+              <div class="glow-inner">
                 <h3>📈 Growth (增长)</h3>
                 <div class="form-row"><span>per_region/week</span><span class="val" id="p-perweek">—</span></div>
                 <div class="form-row"><span>n_regions</span><span class="val" id="p-nreg">—</span></div>
                 <div class="form-row"><span>weeks/month</span><span class="val" id="p-wkmon">—</span></div>
               </div>
             </div>
-            <div class="beam-wrap" data-section="revenue">
-              <div class="beam-content">
+            <div class="glow-card" data-section="revenue">
+              <div class="glow-border"></div>
+              <div class="glow-inner">
                 <h3>💰 Revenue (收入)</h3>
                 <div class="form-row"><span>initial_pv</span><span class="val" id="p-pv">—</span></div>
                 <div class="form-row"><span>monthly_renew</span><span class="val" id="p-renew">—</span></div>
               </div>
             </div>
-            <div class="beam-wrap" data-section="commission">
-              <div class="beam-content">
+            <div class="glow-card" data-section="commission">
+              <div class="glow-border"></div>
+              <div class="glow-inner">
                 <h3>🎁 Commission (报酬)</h3>
                 <div class="form-row"><span>own_basic_rate</span><span class="val" id="p-rate">—</span></div>
                 <div class="form-row"><span>pair_bonus 1代</span><span class="val">15%</span></div>

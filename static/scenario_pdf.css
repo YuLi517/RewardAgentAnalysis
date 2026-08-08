@@ -2,6 +2,95 @@
 /* 复 P3 PR1 配色: bg #0a0a14 / line #5AA4AE (天水碧) / region2 #C0EBD7 (青白) /
    region3 #F0C239 (缃色) / text #758A99 (墨灰) / card #1a1a2e / #2a2a3e */
 
+/* === GlowCard 旋转光带 (v1.0.5 纯 CSS, 替换旧 .beam-wrap ::before/::after) ===
+   PDF 页面特殊: 白底容器, 卡片深色 + 强外发光
+   优势: 100% CSS, 无 JS, 截图进 PDF 时静态帧也有强视觉 (conic-gradient 单帧就有光带残留)
+   关键: 截图前 wait 0ms (html2canvas 用当前帧), 旋转动画单帧包含光带
+*/
+@keyframes glow-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* 大卡片 (4 组参数, PDF 白底) */
+.glow-card {
+  position: relative;
+  border-radius: 12px;
+  padding: 3px;
+  background: #1a1a2e;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    0 0 20px rgba(90, 164, 174, 0.25),     /* PDF 强外发光 (白底需要更亮) */
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.glow-card .glow-border {
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%, transparent 25%,
+    #5AA4AE 35%, #758A99 42%, #5AA4AE 48%,
+    transparent 58%, transparent 100%
+  );
+  animation: glow-spin 4s linear infinite;
+  z-index: 0;
+}
+.glow-card .glow-inner {
+  position: relative;
+  z-index: 1;
+  background: #1a1a2e;
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+.glow-card .glow-inner h3 {
+  color: #5AA4AE;
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* highlight (TOTAL) */
+.glow-card-highlight .glow-border {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%, transparent 20%,
+    #C0EBD7 30%, #5AA4AE 40%, #C0EBD7 50%,
+    transparent 60%, transparent 100%
+  );
+  animation-duration: 3s;
+}
+.glow-card-highlight .glow-inner {
+  background: #2a3a3e;
+  border: 1px solid rgba(192, 235, 215, 0.3);
+}
+.glow-card-highlight {
+  box-shadow:
+    0 0 24px rgba(192, 235, 215, 0.30),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* compact (8 报酬小卡片, PDF 深色背景要跟白底容器对比) */
+.glow-card-compact {
+  border-radius: 8px;
+  padding: 2px;
+  box-shadow:
+    0 0 12px rgba(90, 164, 174, 0.18),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.glow-card-compact .glow-border {
+  animation-duration: 5s;
+}
+.glow-card-compact .glow-inner {
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: #1a1a2e;
+}
+.pdf-cards .label { font-size: 11px; color: #758A99; text-transform: uppercase; }
+.pdf-cards .val { font-size: 14px; color: #F0C239; font-family: "Consolas", monospace; font-weight: 600; margin-top: 4px; }
+.pdf-cards .glow-card-highlight .val { color: #5AA4AE; }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -159,40 +248,14 @@ body {
   margin-top: 32px;
 }
 
-/* === Section 2 + Section 8: 8 卡片 === */
+/* === Section 2 + Section 8: 8 卡片 (v1.0.5: glow-card-compact) === */
 .pdf-cards {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin: 8px 0;
 }
-.pdf-card {
-  background: #F7FCFC;
-  border: 1px solid #D6ECF0;
-  border-radius: 6px;
-  padding: 8px 12px;
-}
-.pdf-card .label {
-  font-size: 11px;
-  color: #758A99;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-.pdf-card .val {
-  font-size: 14px;
-  color: #F0C239;
-  font-family: "Consolas", monospace;
-  font-weight: 600;
-  margin-top: 4px;
-}
-.pdf-card-highlight {
-  background: #2a3a3e;
-  border-color: #C0EBD7;
-}
-.pdf-card-highlight .val { color: #5AA4AE; }
-.pdf-cards-top5 {
-  margin-top: 12px;
-}
+/* .pdf-card / .pdf-card-highlight 已被 .glow-card-compact 替代, 样式见顶部 */
 
 .summary-avg {
   font-size: 13px;
@@ -232,59 +295,13 @@ body {
   text-align: center;
 }
 
-/* === Section 4: 4 border-beam 参数 (复 PR1 风格) === */
+/* === Section 4: 4 glow-card 参数 (v1.0.5 替换 .beam-wrap) === */
 .pdf-params {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
-.beam-wrap {
-  position: relative;
-  padding: 1px;
-  border-radius: 12px;
-  background: #1a1a2e;
-  overflow: visible;
-}
-.beam-wrap::before, .beam-wrap::after {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: 12px;
-  pointer-events: none;
-}
-.beam-wrap::before {
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    #5AA4AE 60deg,
-    #758A99 120deg,
-    transparent 180deg,
-    transparent 360deg
-  );
-  animation: beam-rotate 3s linear infinite;
-  z-index: 1;
-}
-.beam-wrap::after {
-  background: rgba(90, 164, 174, 0.15);
-  filter: blur(8px);
-  z-index: 0;
-}
-@keyframes beam-rotate { to { transform: rotate(360deg); } }
-
-.beam-content {
-  position: relative;
-  background: #1a1a2e;
-  border-radius: 11px;
-  padding: 12px 16px;
-  z-index: 2;
-}
-.beam-content h3 {
-  color: #5AA4AE;
-  font-size: 12px;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
+/* .beam-wrap 已废弃, 由 .glow-card 替代 */
 .form-row {
   display: flex;
   justify-content: space-between;

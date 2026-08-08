@@ -148,7 +148,7 @@
       retail: overview.retail,
       total: overview.total,
     };
-    $$('.p3-cards .card').forEach(card => {
+    $$('.p3-cards .glow-card').forEach(card => {
       const field = card.dataset.field;
       if (map[field] !== undefined) {
         card.querySelector('.val').textContent = formatUSD(map[field]);
@@ -243,7 +243,7 @@
   }
 
   function syncInputToFormState(el) {
-    const section = el.closest('.beam-wrap')?.dataset.section;
+    const section = el.closest('.glow-card')?.dataset.section;
     const key = el.dataset.key;
     if (!section || !key) return false;
     let value = el.value;

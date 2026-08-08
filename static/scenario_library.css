@@ -1,3 +1,83 @@
+/* === P3 scenario_library.css ===
+ * v1.0.5: 引入 .glow-card 旋转光带 (替换旧 ::before/::after 圆锥渐变) */
+
+@keyframes glow-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.glow-card {
+  position: relative;
+  border-radius: 12px;
+  padding: 3px;
+  background: #1a1a2e;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    0 0 20px rgba(90, 164, 174, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.glow-card .glow-border {
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%, transparent 25%,
+    #5AA4AE 35%, #758A99 42%, #5AA4AE 48%,
+    transparent 58%, transparent 100%
+  );
+  animation: glow-spin 4s linear infinite;
+  z-index: 0;
+}
+.glow-card .glow-inner {
+  position: relative;
+  z-index: 1;
+  background: #1a1a2e;
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+.glow-card .glow-inner h3 {
+  color: #5AA4AE;
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.glow-card-highlight .glow-border {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%, transparent 20%,
+    #C0EBD7 30%, #5AA4AE 40%, #C0EBD7 50%,
+    transparent 60%, transparent 100%
+  );
+  animation-duration: 3s;
+}
+.glow-card-highlight .glow-inner {
+  background: #2a3a3e;
+  border: 1px solid rgba(192, 235, 215, 0.3);
+}
+.glow-card-highlight {
+  box-shadow:
+    0 0 24px rgba(192, 235, 215, 0.20),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.glow-card-compact {
+  border-radius: 8px;
+  padding: 2px;
+  box-shadow:
+    0 0 12px rgba(90, 164, 174, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.glow-card-compact .glow-border {
+  animation-duration: 5s;
+}
+.glow-card-compact .glow-inner {
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.lib-cards .label { font-size: 11px; color: #758A99; text-transform: uppercase; }
+.lib-cards .val { font-size: 16px; color: #F0C239; font-family: "Consolas", monospace; margin-top: 4px; }
+.lib-cards .glow-card-highlight .val { color: #C0EBD7; }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
        background: #0f0f1e; color: #D6ECF0; min-height: 100vh; padding: 16px; }
@@ -23,31 +103,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC"
 .lib-detail-meta { color: #758A99; font-size: 11px; margin-bottom: 12px; }
 .lib-detail h3 { color: #5AA4AE; font-size: 13px; margin: 12px 0 8px; }
 
-/* 4 border-beam (复 PR1 样式) */
+/* 4 glow-card 参数 (v1.0.5 替换 .beam-wrap) */
 .lib-params { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
-.beam-wrap { position: relative; padding: 1px; border-radius: 12px; background: #1a1a2e; overflow: visible; }
-.beam-wrap::before { content: ''; position: absolute; inset: -1px; border-radius: 12px;
-  background: conic-gradient(from 0deg, transparent 0deg, #5AA4AE 60deg, #758A99 120deg,
-                            transparent 180deg, transparent 360deg);
-  animation: beam-rotate 3s linear infinite; z-index: 1; pointer-events: none; }
-.beam-wrap::after { content: ''; position: absolute; inset: -1px; border-radius: 12px;
-  background: rgba(90, 164, 174, 0.15); filter: blur(8px); z-index: 0; pointer-events: none; }
-@keyframes beam-rotate { to { transform: rotate(360deg); } }
-.beam-content { position: relative; background: #1a1a2e; border-radius: 11px;
-  padding: 12px 16px; z-index: 2; }
-.beam-content h3 { color: #5AA4AE; font-size: 12px; margin-bottom: 8px;
-  text-transform: uppercase; letter-spacing: 0.5px; }
 .param-row { display: flex; justify-content: space-between; font-size: 12px;
   padding: 4px 0; color: #758A99; }
 .param-row .val { color: #F0C239; font-family: "Consolas", monospace; }
 
-/* 8 卡片 (复 PR1 样式) */
+/* 8 卡片 (v1.0.5: glow-card-compact) */
 .lib-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.card { background: #2a2a3e; border-radius: 8px; padding: 8px 12px; }
-.card .label { font-size: 11px; color: #758A99; text-transform: uppercase; }
-.card .val { font-size: 16px; color: #F0C239; font-family: "Consolas", monospace; margin-top: 4px; }
-.card-highlight { background: #2a3a3e; border: 1px solid #C0EBD7; }
-.card-highlight .val { color: #C0EBD7; }
 
 .lib-detail-url { margin-top: 16px; padding: 8px; background: #0a0a14; border-radius: 4px;
                  color: #758A99; font-family: "Consolas", monospace; font-size: 11px;

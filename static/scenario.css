@@ -1,4 +1,7 @@
-/* === P3 scenario.css === */
+/* === P3 scenario.css ===
+ * v1.0.5: 纯 CSS conic-gradient 旋转光带 (替换 BorderBeam 1.3)
+ * BorderBeam 1.3 问题: 30% 弧段 + mask 三层 → opacity 0.12-0.26, 肉眼几乎不可见
+ * 纯 CSS 方案: 外层 conic-gradient 旋转 + 内层遮盖 → 边缘强光带, 100% 可控 */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -10,103 +13,158 @@ body {
   padding: 16px;
 }
 
-.p3-container {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
+.p3-container { max-width: 1000px; margin: 0 auto; }
 .p3-title {
-  color: #5AA4AE;
-  font-size: 18px;
-  letter-spacing: 1px;
-  margin-bottom: 16px;
-  text-align: center;
+  color: #5AA4AE; font-size: 18px; letter-spacing: 1px;
+  margin-bottom: 16px; text-align: center;
 }
-
 .p3-layout {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 16px;
+  display: grid; grid-template-columns: 280px 1fr; gap: 16px;
 }
-
 .p3-left, .p3-right {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: flex; flex-direction: column; gap: 12px;
 }
 
-/* === border-beam Rotate (traveling beam, 跟 npm border-beam Rotate 一致) ===
-   实现: border: 2px solid transparent + background 双层 (linear padding-box + conic border-box)
-   - .beam-wrap 自带 2px transparent border, 占 padding 空间
-   - background 1: linear-gradient padding-box (内容区深色)
-   - background 2: conic-gradient border-box (光带在 border 区域, 圆角自动跟随)
-   - animation: --beam-angle 360deg 旋转, conic 重新评估
-   优势: 不依赖 mask, 兼容所有现代浏览器, border-radius 完美 (border-beam 官方用法)
-   历史教训: ::after + mask 方案在某些 Chromium 版本 mask 失败 (整个 conic 摊出 / 不可见) */
-@property --beam-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
+/* === GlowCard 旋转光带 (v1.0.5 纯 CSS) ===
+   原理: 外层 .glow-card 放 conic-gradient 旋转动画
+         内层 .glow-inner 用 background: #1a1a2e 遮住中间, 只露出边缘光带
+         .glow-border 是旋转的 conic-gradient 层, padding = 光带宽度
+   优势: 100% CSS, 无 JS, 无第三方依赖, 光带强度完全可控 */
+
+@keyframes glow-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
-.beam-wrap {
+
+/* --- 大卡片 (左侧 4 区) --- */
+.glow-card {
   position: relative;
-  border: 2px solid transparent;     /* 2px border 占空间, 让 conic 有 border 区域可画 */
   border-radius: 12px;
-  background:
-    /* 1) 内容区深色 (padding-box 范围内, 含 padding+content, 不含 border) */
-    linear-gradient(#1a1a2e, #1a1a2e) padding-box,
-    /* 2) 光带在 border 区域 (border-box 范围, 含 border+padding+content, 但内容被 1) 覆盖) */
-    conic-gradient(
-      from var(--beam-angle),
-      transparent 0deg,
-      transparent 88deg,
-      #5AA4AE 92deg,
-      #C0EBD7 98deg,              /* 高光中心 (亮白绿) */
-      #FFFFFF 100deg,              /* 高光白点, 强对比 */
-      #C0EBD7 102deg,
-      #5AA4AE 108deg,
-      transparent 112deg,
-      transparent 360deg
-    ) border-box;
-  animation: beam-spin 2.5s linear infinite;
+  padding: 3px;                          /* 光带宽度 = padding, 3px 明显 */
+  background: #1a1a2e;                   /* fallback */
+  overflow: hidden;                       /* 裁剪旋转的 conic-gradient, 只露出 padding 区域 */
   isolation: isolate;
+  box-shadow:
+    0 0 20px rgba(90, 164, 174, 0.15),   /* 青色外发光, 跟旋转光带叠加 */
+    0 4px 12px rgba(0, 0, 0, 0.4);       /* 深度感 */
 }
-/* 内部柔光 halo (顶部淡出, 静态时也有微弱光, 让卡片不死板) */
-.beam-wrap::before {
-  content: '';
+.glow-card .glow-border {
   position: absolute;
-  inset: 2px;                        /* 缩进 2px, 不覆盖光带 */
-  border-radius: 10px;               /* 比 .beam-wrap 的 12px 少 2px */
-  pointer-events: none;
-  background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(90, 164, 174, 0.25) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(192, 235, 215, 0.10) 0%, transparent 70%);
+  inset: -50%;                            /* 放大到 2x, 旋转时覆盖圆角 */
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    transparent 25%,
+    #5AA4AE 35%,                          /* 天水碧, 主色光带 */
+    #758A99 42%,                          /* 墨灰, 过渡 */
+    #5AA4AE 48%,                          /* 天水碧, 双色带 */
+    transparent 58%,
+    transparent 100%
+  );
+  animation: glow-spin 4s linear infinite;
   z-index: 0;
 }
-/* 内容层 + 输入层 (在 ::before 之上) */
-.beam-content { position: relative; z-index: 1; }
-@keyframes beam-spin {
-  to { --beam-angle: 360deg; }
-}
-/* prefers-reduced-motion: 关掉动画, 保留 1px 静态边 */
-@media (prefers-reduced-motion: reduce) {
-  .beam-wrap { animation: none; }
-}
-
-.beam-content {
+.glow-card .glow-inner {
   position: relative;
+  z-index: 1;
   background: #1a1a2e;
-  border-radius: 11px;
+  border-radius: 10px;                    /* 比外层小 2px (padding), 露出光带 */
   padding: 12px 16px;
-  z-index: 2;
 }
-.beam-content h3 {
+.glow-card .glow-inner h3 {
   color: #5AA4AE;
   font-size: 12px;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* --- highlight 卡片 (TOTAL) --- */
+.glow-card-highlight .glow-border {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    transparent 20%,
+    #C0EBD7 30%,                          /* 青白, 更亮 */
+    #5AA4AE 40%,                          /* 天水碧, 过渡 */
+    #C0EBD7 50%,                          /* 青白, 双色带 */
+    transparent 60%,
+    transparent 100%
+  );
+  animation-duration: 3s;                 /* 稍快, 更醒目 */
+}
+.glow-card-highlight .glow-inner {
+  background: #2a3a3e;                    /* 稍亮底色, 跟 TOTAL 身份匹配 */
+  border: 1px solid rgba(192, 235, 215, 0.3);
+}
+.glow-card-highlight {
+  box-shadow:
+    0 0 24px rgba(192, 235, 215, 0.20),  /* 青白色外发光 */
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* --- compact 卡片 (8 报酬小卡片) --- */
+.glow-card-compact {
+  border-radius: 8px;
+  padding: 2px;                           /* 小卡片 2px 光带 */
+  box-shadow:
+    0 0 12px rgba(90, 164, 174, 0.12),   /* 青色外发光 */
+    0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.glow-card-compact .glow-border {
+  animation-duration: 5s;                 /* 慢一点, 小卡片不需要太快 */
+}
+.glow-card-compact .glow-inner {
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.glow-card-compact .glow-inner h3 {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+/* --- 8 报酬卡片 grid --- */
+.p3-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.p3-cards .label {
+  font-size: 11px;
+  color: #758A99;
+  text-transform: uppercase;
+}
+.p3-cards .val {
+  font-size: 16px;
+  color: #F0C239;
+  font-family: "Consolas", monospace;
+  margin-top: 4px;
+}
+.p3-cards .glow-card-highlight .val {
+  color: #C0EBD7;
+}
+
+/* --- 旧 .card / .card-highlight 保留兼容 --- */
+.card {
+  background: #1a1a2e;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.card .label {
+  font-size: 11px;
+  color: #758A99;
+  text-transform: uppercase;
+}
+.card .val {
+  font-size: 16px;
+  color: #F0C239;
+  font-family: "Consolas", monospace;
+  margin-top: 4px;
+}
+.card-highlight { background: #2a3a3e; border: 1px solid #C0EBD7; }
+.card-highlight .val { color: #C0EBD7; }
+
+/* === Form rows === */
 .form-row {
   display: flex;
   justify-content: space-between;
@@ -116,7 +174,6 @@ body {
   color: #758A99;
   gap: 8px;
 }
-/* 可调参数: 跟原 val 视觉对齐 (金黄 monospace 右对齐), 但可编辑 */
 .form-row .val-input {
   background: rgba(90, 164, 174, 0.08);
   border: 1px solid transparent;
@@ -145,14 +202,6 @@ body {
   border-color: #5AA4AE;
   box-shadow: 0 0 0 2px rgba(90, 164, 174, 0.25);
 }
-.form-row .val-input.invalid {
-  border-color: #EF4444;
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
-}
-.form-row .val-input::placeholder {
-  color: #758A99;
-  opacity: 0.6;
-}
 .form-row .val.readonly {
   color: #F0C239;
   font-family: "Consolas", monospace;
@@ -180,37 +229,8 @@ body {
   text-align: center;
 }
 
-/* === 8 报酬卡片 === */
-.p3-cards {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-.card {
-  background: #1a1a2e;
-  border-radius: 8px;
-  padding: 8px 12px;
-}
-.card .label {
-  font-size: 11px;
-  color: #758A99;
-  text-transform: uppercase;
-}
-.card .val {
-  font-size: 16px;
-  color: #F0C239;
-  font-family: "Consolas", monospace;
-  margin-top: 4px;
-}
-.card-highlight { background: #2a3a3e; border: 1px solid #C0EBD7; }
-.card-highlight .val { color: #C0EBD7; }
-
 /* === 按钮 === */
-.p3-submit-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
+.p3-submit-row { display: flex; gap: 8px; margin-top: 8px; }
 .p3-submit-btn, .p3-preview-btn {
   padding: 10px 16px;
   border-radius: 6px;
@@ -261,9 +281,7 @@ body {
   padding: 8px;
   overflow-x: auto;
 }
-#heatmap-canvas {
-  display: block;
-}
+#heatmap-canvas { display: block; }
 .heatmap-legend {
   display: flex;
   align-items: center;
@@ -276,8 +294,7 @@ body {
 .legend-grad {
   flex: 0 0 100px;
   height: 8px;
-  background: linear-gradient(to right,
-    rgba(90, 164, 174, 0.1), rgba(90, 164, 174, 1.0));
+  background: linear-gradient(to right, rgba(90, 164, 174, 0.1), rgba(90, 164, 174, 1.0));
   border-radius: 4px;
 }
 .heatmap-tooltip {

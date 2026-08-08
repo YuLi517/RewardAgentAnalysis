@@ -380,7 +380,7 @@
 
   function renderSummaryCards(state) {
     const rewardMap = stateToRewardMap(state);
-    $$('#summary-cards .pdf-card').forEach(card => {
+    $$('#summary-cards .glow-card').forEach(card => {
       const f = card.dataset.field;
       if (rewardMap[f] !== undefined) {
         card.querySelector('.val').textContent = formatUSD(rewardMap[f]);
@@ -416,7 +416,7 @@
     }
     top5Data.forEach(d => {
       const card = document.createElement('div');
-      card.className = 'pdf-card';
+      card.className = 'glow-card glow-card-compact';
       const totalVal = formatUSD(d.total);
       card.innerHTML = `
         <div class="label">bfs_id=${d.bfs_id} ${d.bfs_id === 0 ? '(root 王常军)' : ''}</div>

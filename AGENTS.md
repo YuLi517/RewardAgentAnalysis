@@ -317,6 +317,36 @@
   - `skills/pair_commission.py` _settle_node 应用
 - 改 commission 算法 / 配对规则必查 §2.10 + §2.11 + §5.32 + §5.33 + §5.34 列出的所有引用点
 
+### 2.11c 1代4 商品价值 (v1.0.12 + v1.0.13 拍板, 2026-08-08) — 新第 9 种报酬, 凑齐 + 1 月触发
+
+- **业务背景**: 替代 team_bonus 5 层 ancestor/descendant 重复累加 bug 展示 (v1.0.12 拍板),
+              v1.0.13 加首次触发延迟 + 1 月 (凑齐后下个月起持续)
+- **业务规则 (用户 2026-08-08, 4 轮澄清拍板)**:
+  1. **触发条件**: 父节点 (非叶) "长出树" BFS 凑齐 4 个最近子 (slot 1-5 顺序, 跨层)
+  2. **奖励金额**: 95 PV 固定 (公司随机商品 80-110 PV 取中值)
+  3. **触发频率**: 凑齐 4 子后下个月起, 每月都拿 95 PV (持续, v1.0.13 拍板)
+  4. **首次触发延迟 + 1 月** (v1.0.13 拍板):
+     - 凑齐 4 子那个月不算 (还在 "子节点 100 PV 递延" 业务中)
+     - 下个月起才触发 (4 子都至少 1 次完成 100 PV 递延)
+     - 业务示例: 3月第2周 A、B 挂入父 F, 3月第3周 C、D 挂入父 F (凑齐 4 子)
+       → 4月第3周 C、D 完成 100 PV 递延 → 4月第3周 (M_first + 1) 触发
+  5. **后续月持续**: 每月都拿 95 (4 子都还在线 + 都续费是默认, 不单独检查续费状态)
+- **算法 (scenario/commission/one_gen_four.py)**:
+  - `ONE_GEN_FOUR_GOODS_PV = Decimal("95")` (固定)
+  - `_bfs_collect_n_nodes(scenario, root_bfs, n)`: BFS 走父节点 5 子区, slot_line_id 排序
+  - `_get_first_complete_month(scenario, bfs_id)`: 凑齐月份 M_first = max(join_month of 4 子)
+  - `compute_one_gen_four_for_node(scenario, bfs_id, month)`:
+    - 凑齐 4 子 M_first → 触发月 = month >= M_first + 1 → 95 PV
+    - month < M_first + 1 → 0
+  - `compute_one_gen_four_table_for_month(scenario, month)`: 全网表 + LRU cache
+- **业务场景验证 (binary 2144 节点, weeks_per_month=4)**:
+  - E2E 验: month 0 = $0 (凑齐当月不触发), month 1-14 = $48,355 (持续)
+  - root bfs_id=1: month 0 = $0, month 1 = $95
+  - 14 月累计 = 14 × $48,355 = **$676,970** (v1.0.12 是 15 × $48,355 = $725,325, 差 1 月 $48,355)
+- **E2E**: `_e2e_v1013.py` 验 1 月延迟生效 (6 个 assertion 全过)
+- **改 1代4 算法必查**: `scenario/commission/one_gen_four.py` + `scenario/breakdown.py` + `scenario/_month_snapshot.py` + `scenario_routes.py` 4 个 endpoint (overview/state/overview all/export csv)
+- **改前端 9 卡片展示必查**: `static/scenario.html/.js` + `static/scenario_compare.html/.js` + `static/scenario_library.html/.js` + `static/scenario_pdf.html/.js` 4 页面 8→9 卡片 (v1.0.12 已做)
+
 ### 2.12 下单管理 (PR #70 拍板, 2026-07-27)
 
 - **业务**: 用户 2026-07-27 截图反馈 "增加一个下单管理按钮, 里面是一张表, 显示了目前的库存和这次准备下单的数量, 单价, 可以把图里面的内容作为 Sample, 放到数据库表里面. 客户在增加购买的数量的时候, 也相应减少库存的数量, 并且同时计算出各项金额"

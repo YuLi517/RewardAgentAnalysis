@@ -81,7 +81,8 @@ def truncate_to_n_nodes(template: dict, n: int) -> Tuple[List[dict], Dict[int, i
     return truncated, id_map
 
 
-def build_bfs_nodes_from_template(fork_type: str, n: int) -> Dict[int, dict]:
+def build_bfs_nodes_from_template(fork_type: str, n: int,
+                                   growth: Optional['Growth'] = None) -> Dict[int, dict]:
     """从 JSON 模板构 builder.py 兼容的 bfs_nodes 字典
     (跟 _build_bfs_tree 输出格式完全一致, 直接喂给下游 commission/ 算法)
 
@@ -95,7 +96,8 @@ def build_bfs_nodes_from_template(fork_type: str, n: int) -> Dict[int, dict]:
       - slot_line_id = c 列表里的位置 (1-indexed, 1=line1, 2=line2, ...)
       - region_id = 父的 region_id (L1 父继承 region, L1 root 子继承 root region=0)
       - L1 父 region_id = bfs_id (L1 节点自己就是 region 1-4)
-      - join_week/month/color_index: 跟 _build_bfs_tree 一致, 业务无关这里用 0 兜底
+      - join_week/month/color_index: L3+ 节点按 region round_robin 排 (跟 _build_bfs_tree 一致)
+        v1.0.19 fix: 之前所有节点 join_month=0, 导致 M0 teamBonus 爆炸 (780 万)
     """
     template = load_json_tree_template(fork_type)
     truncated, _ = truncate_to_n_nodes(template, n)
@@ -135,6 +137,44 @@ def build_bfs_nodes_from_template(fork_type: str, n: int) -> Dict[int, dict]:
                 slot_map[child_id] = i
                 queue.append((child_id, cur, i))
 
+    # v1.0.19: L3+ 节点按 region round_robin 排 join_week/month (跟 _build_bfs_tree 一致)
+    # 之前所有节点 join_month=0, 导致 M0 teamBonus 爆炸 (780 万)
+    # 业务: 4 大区独立 BFS 排, 每大区每周 n_per_region_per_week
+    if growth is None:
+        n_per_region_per_week = 9
+        n_regions = 4
+        weeks_per_month = 4
+    else:
+        n_per_region_per_week = growth.nodes_per_region_per_week
+        n_regions = growth.n_regions
+        weeks_per_month = growth.weeks_per_month
+
+    # L1 父数 = region 数 (binary/ternary/quaternary 都是 4 大区)
+    l1_n = n_regions
+    region_l3plus_count: Dict[int, int] = {r: 0 for r in range(1, l1_n + 1)}
+
+    # 按 BFS 顺序 (template_id 1~N) 遍历, L3+ 节点按 region 排 join_week/month
+    join_week_map: Dict[int, int] = {}
+    join_month_map: Dict[int, int] = {}
+    color_index_map: Dict[int, int] = {}
+    for node in truncated:
+        template_id = node["id"]
+        level = level_map.get(template_id, 0)
+        if level >= 3:
+            region = region_map.get(template_id, 0)
+            idx_in_region = region_l3plus_count.get(region, 0)
+            jw = idx_in_region // n_per_region_per_week
+            jm = jw // weeks_per_month
+            ci = (jm % 4) + 1
+            join_week_map[template_id] = jw
+            join_month_map[template_id] = jm
+            color_index_map[template_id] = ci
+            region_l3plus_count[region] = idx_in_region + 1
+        else:
+            join_week_map[template_id] = 0
+            join_month_map[template_id] = 0
+            color_index_map[template_id] = 0
+
     # 构最终 bfs_nodes (v1.0.18: bfs_id = template_id - 1, 跟原 builder.py root=0 一致)
     # 业务上: 跨 binary / quaternary / ternary 三种 fork_type, root 都是 bfs_id 0
     #         L1 父都是 bfs_id 1, 2, 3, 4 (4 大区)
@@ -152,10 +192,10 @@ def build_bfs_nodes_from_template(fork_type: str, n: int) -> Dict[int, dict]:
             "parent_bfs": parent_bfs,
             "slot_line_id": slot_map.get(template_id, 0),
             "region_id": region_map.get(template_id, 0),
-            # 兼容 _build_bfs_tree 字段 (业务上 scenario commission/ 不强依赖这 3 个)
-            "join_week": 0,
-            "join_month": 0,
-            "color_index": 0,
+            # v1.0.19: L3+ 节点按 region round_robin 排 (跟 _build_bfs_tree 一致)
+            "join_week": join_week_map.get(template_id, 0),
+            "join_month": join_month_map.get(template_id, 0),
+            "color_index": color_index_map.get(template_id, 0),
         }
     return bfs_nodes
 

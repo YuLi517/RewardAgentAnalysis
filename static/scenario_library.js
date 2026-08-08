@@ -81,9 +81,7 @@
       const ovResp = await fetch(`/api/scenarios/${id}/overview?month=14`);
       if (!ovResp.ok) throw new Error('overview HTTP ' + ovResp.status);
       const overview = await ovResp.json();
-      const fields = ['ownBasic', 'pairBonus', 'teamBonus', 'savings',
-                      'leader', 'horizontal', 'oneGenFour', 'total'];
-      $$('.lib-cards .card').forEach(card => {
+      $$('.lib-cards .glow-card').forEach(card => {
         const f = card.dataset.field;
         if (overview[f] !== undefined) {
           card.querySelector('.val').textContent = formatUSD(overview[f]);

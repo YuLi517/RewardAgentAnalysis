@@ -27,7 +27,7 @@ def _build_bfs_tree(tree_shape: TreeShape, growth: Optional[Growth] = None) -> D
     if is_template_fork_type(tree_shape.fork_type):
         # 走 JSON 模板: total = sum(layer_counts.values()) = 用户想要的节点数
         n = sum(tree_shape.layer_counts.values())
-        return build_bfs_nodes_from_template(tree_shape.fork_type, n)
+        return build_bfs_nodes_from_template(tree_shape.fork_type, n, growth=growth)
 
     nodes: Dict[int, dict] = {}
     layer_counts = tree_shape.layer_counts

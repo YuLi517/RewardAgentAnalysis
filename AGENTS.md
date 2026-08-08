@@ -761,6 +761,126 @@
   - 前端 4 页面 (scenario/scenario_compare/scenario_library/scenario_pdf): 不受影响 (bfs_id 是后端概念, 前端只用 month/index)
 
 
+### 2.16c GlowCard 4 框底部流光漏出修复 (v1.0.18 拍板, 2026-08-08)
+
+- **业务背景**: v1.0.18 收尾阶段 (用户 2026-08-08 video 反馈)
+  - 现象: scenario.html 第 1 排 4 框 (TreeShape/Growth/Revenue/Commission), 前 3 框底部有强流光"漏出", COMMISSION 框底部干净, 4 框视觉不一致
+  - 用户原话: "排版换之后, 第一排的前 3 个框, 出现流光没有被前面遮住的情况"
+  - 跟 v1.0.11 (4 框横排 grid 排版) 直接相关: v1.0.5 设计的 GlowCard 假设 .glow-card 高度 = .glow-inner 高度 + 6px padding, 但 v1.0.11 grid `repeat(4, 1fr)` 默认 `align-items: stretch` 让 4 框等高 (= COMMISSION 最高), 前 3 框 .glow-inner 高度 < COMMISSION, 底部 16-78px 空白露 conic-gradient 强光带
+- **业务规则 (v1.0.18 拍板)**:
+  1. **4 框底部都只露 3px 边缘光带**: 保持 v1.0.11 4 框 grid stretch 等高设计, 修复 .glow-inner stretch 填满 .glow-card content area
+  2. **8 报酬卡片 (compact) 同样修复**: 继承 .glow-card 的 display: flex + .glow-inner flex: 1, compact 卡片也填满 (差 4 = 2px padding × 2)
+  3. **4 个 CSS 同步修**: scenario.css / scenario_compare.css / scenario_library.css / scenario_pdf.css 都有独立 .glow-card 定义, 4 处都改
+  4. **不影响 4 页面业务**: 只改 CSS 视觉, 后端 bfs_id 体系 / commission / node 表 不变
+- **算法 (4 个 CSS 同步改)**:
+  - 旧 `.glow-card`: `position: relative; border-radius: 12px; padding: 3px; ...` (没 flex)
+  - 新 `.glow-card`: 加 `display: flex; flex-direction: column;` 让子元素可 stretch
+  - 旧 `.glow-card .glow-inner`: `position: relative; z-index: 1; background: #1a1a2e; border-radius: 10px; padding: 12px 16px;`
+  - 新 `.glow-card .glow-inner`: 加 `flex: 1; display: flex; flex-direction: column;` stretch 填满 .glow-card content area
+  - `.glow-card-compact .glow-inner` 继承 base 的 flex: 1, 不需要 override (只 override border-radius + padding)
+- **业务效果 (Playwright 验)**:
+  - 修复前: tree inner 168 / growth 128 / revenue 112 / commission 184 (差 16-72px = .glow-inner 没填满, 底部露 conic-gradient)
+  - 修复后: 4 框 .glow-inner 全部 184px (= 190 - 6 padding), 底部 3px 一致光带
+  - 8 卡片 .glow-inner 全部填满 (差 4 = 2px padding × 2)
+- **业务影响**:
+  - 4 页面视觉统一: scenario.html 4 框 (1x4 grid) + 8 报酬卡片 (2x4 grid), scenario_pdf 4 框 (2x2 grid) + 8 报酬卡片, scenario_library 列表卡片 (无 4 框 grid 但 .glow-card 同样修复)
+  - v1.0.5 设计的 3px 边缘光带 (4 框) + 2px 边缘光带 (8 卡片) 一致
+  - 不影响 v1.0.11 4 框横排 + v1.0.15 retail 改 1代4 + v1.0.16 节点表持久化 等业务改动
+- **改 4 框布局必查**: `static/scenario.css` + `static/scenario_compare.css` + `static/scenario_library.css` + `static/scenario_pdf.css` 4 个 .glow-card 同步改 (用户反馈 v1.0.18 修了 scenario.css, 顺手 3 个其他 CSS 一起修避免同样 bug)
+
+### 2.16d teamBonus 4 周窗口修复 (v1.0.19 + v1.0.19a 拍板, 2026-08-08/09)
+
+- **业务背景**: v1.0.19 用户截图反馈 S140 M0 teamBonus = $7,811,100 > total $1,264,208 异常
+  - 用户原话 (2026-08-08): "teambonus的M0=7811100 > 总金额 total 1264208.8美金。这是错误的吧。"
+  - 2026-08-09 跟进: "需要把 M1+ teamBonus=0 的问题也修了"
+- **v1.0.19 根因 (JSON 模板 join_month 全 0)**:
+  - `scenario/json_tree_loader.py` 第 156-158 行 (旧版): 全部 2144 节点 `"join_month": 0, "join_week": 0, "color_index": 0`
+  - 业务影响: teamBonus 4 周窗口检查 `month - node["join_month"] >= 1`, M0 时 `0-0=0 < 1` 全部通过, 整棵子树所有节点的 own PV 都被算进 root teamBonus
+  - 结果: M0 teamBonus 7,811,100 (root 拿了 780 万) > total 1,264,208 (业务不可接受)
+- **v1.0.19a 跟随问题 (窗口检查中断递归)**:
+  - `scenario/commission/team_bonus.py` `_walk_collect` 第 116-117 行 (旧版): 对每个递归节点都做 `month - node["join_month"] >= 1` 检查
+  - 业务影响: M1+ 时 join_month=0 的中间层节点 (L1-L2) 被过滤, 递归提前中断, M1+ teamBonus=0
+  - 结果: M1-M14 teamBonus 全部 0 (业务也不对)
+- **业务规则 (v1.0.19 拍板)**:
+  1. **JSON 模板 L3+ 节点按 region round_robin 排 join_week/month** (跟 `_build_bfs_tree` 一致):
+     - 旧: 全部 2144 节点 join_month=0
+     - 新: L0-L2 join_month=0 (L0=1, L1=4, L2=8), L3+ 按 region 排 (4 大区 × 9/区/周)
+     - binary 树: M0=157, M1-M13=144, M14=115 (144×13+115+157=2144 ✓)
+     - ternary 树: M0=157, M1-M13=144, M14=115 (跟 binary 走同样 round_robin 逻辑)
+  2. **窗口检查只对有 own PV 的节点生效** (v1.0.19a):
+     - 旧: `if month - node["join_month"] >= 1: return` 在递归入口, 中间层节点也检查
+     - 新: `if own > 0 and month == node["join_month"]: pvs.append(own)`, 中间层不检查只递归
+     - 业务: 节点 own PV 只在 join_week 那一周有 1500 (续费 100 不命中 4 档), 所以"4 周窗口"业务上等价于 "join_month == month"
+  3. **DB 迁移**: `tools/migrate_v1019_rebuild_nodes.py` 重建 14 个 binary/quaternary scenario 的 scenario_nodes 表
+     - 旧: scenario_nodes 表存 v1.0.18 修复前快照, 2144 行 join_month 全 0
+     - 新: 走 `_build_bfs_tree` 重新算 → bulk INSERT 2144 行 (按 growth 正确排 join_month)
+  4. **不影响 ternary scenario**: ternary 一直用 `_build_bfs_tree` 排 join_month, 没受影响
+- **算法**:
+  - `scenario/json_tree_loader.py` `build_bfs_nodes_from_template` 加 `growth` 参数:
+    ```python
+    # v1.0.19: L3+ 节点按 region round_robin 排 join_week/month
+    if growth is None:
+        n_per_region_per_week = 9; n_regions = 4; weeks_per_month = 4
+    else:
+        n_per_region_per_week = growth.nodes_per_region_per_week
+        ...
+    l1_n = n_regions
+    region_l3plus_count = {r: 0 for r in range(1, l1_n + 1)}
+    for node in truncated:
+        level = level_map.get(template_id, 0)
+        if level >= 3:
+            region = region_map.get(template_id, 0)
+            idx = region_l3plus_count.get(region, 0)
+            join_week = idx // n_per_region_per_week
+            join_month = join_week // weeks_per_month
+            ...
+    ```
+  - `scenario/builder.py` `_build_bfs_tree` 传 `growth=growth` 给模板加载器 (1 行修改)
+  - `scenario/commission/team_bonus.py` `_walk` + `_walk_collect` 改窗口检查位置:
+    ```python
+    # 旧: 递归入口检查 (中断)
+    if month - node["join_month"] >= 1: return
+    # 新: own>0 时检查 (中间层不检查)
+    if own > 0 and month == node["join_month"]: pvs.append(own)
+    ```
+- **业务验证 (S140 binary, 14 月累计)**:
+  - 修复前: M0 teamBonus $7,811,100 (root 拿 780 万异常) / M1+ 0 (异常)
+  - 修复后: M0 $309,600 / M1 $410,400 / M14 $510,300 / total $1,832,444
+  - 业务合理: M0 157 个 M0 节点 × 1500 × 30% × 4 大区累加 ≈ $30K per node, root 拿所有 5 子区累加
+  - M14 total $1,832,444 > 之前 $1,264,208, 增 $568K 来自 teamBonus 修复
+- **E2E 验证**:
+  - `python tools/migrate_v1019_rebuild_nodes.py` 跑 14 个 binary/quaternary scenario:
+    - 14/14 SUCCESS, 全部 join_month 分布正确 {0: 157, 1: 144, ..., 14: 115}
+  - API 验证 (重启 server 后):
+    - S140 M0: teamBonus=$309,600 / total=$376,801 (合理)
+    - S140 M14: teamBonus=$510,300 / total=$1,832,444 (合理)
+- **踩坑教训**:
+  - 模板加载器 vs builder 函数字段一致性的"沉默 bug": JSON 模板把字段硬编码 0, 不像 `_build_bfs_tree` 走逻辑计算, 业务上"业务无关这里用 0 兜底" 注释 (第 98 行) 是错的
+  - 窗口检查放错位置: 递归入口 vs 叶子节点的语义混淆, 4 周窗口业务上对**叶子 PV 收集**有效, 对**递归路径**无效
+  - 修复时 2 步走 (v1.0.19 改模板 + v1.0.19a 改窗口) 缺一不可, 用户也明确说"需要把 M1+ teamBonus=0 的问题也修了"
+- **改 teamBonus 业务必查**:
+  - `scenario/json_tree_loader.py` `build_bfs_nodes_from_template` 函数签名 + L3+ 排布逻辑
+  - `scenario/commission/team_bonus.py` `_walk` + `_walk_collect` 窗口检查位置
+  - `tools/migrate_v1019_rebuild_nodes.py` (新) 一次性 DB 迁移
+  - 改完跑 `migrate_v1019_rebuild_nodes.py` 重建 DB 节点表
+
+### 2.16e scenario_library.js 选择器 bug 修复 (v1.0.19 顺手修, 2026-08-08)
+
+- **业务背景**: 用户 2026-08-08 反馈 "S140 在 scenario_library 页面打开, 8 种报酬卡片没有数字"
+- **根因**: `static/scenario_library.js` 第 86 行 (旧版): `$$('.lib-cards .card').forEach(...)`
+  - 选择器 `.card` 匹配不到任何元素 (HTML 里 8 卡片 class 是 `glow-card glow-card-compact`, 不是 `card`)
+  - 业务影响: overview API 返回的数据无法写进 DOM, 8 卡片全显示 `—` 占位符
+- **修复**: `static/scenario_library.js` 第 86 行: `.card` → `.glow-card`
+- **辅助**: `static/scenario_library.html` 第 90 行: 加 `?v=4` cache-busting, 防浏览器缓存旧 JS
+- **业务验证**:
+  - 修复前: 8 卡片全显示 `—`, 4 组参数也大部分 `—` (因为 loadDetail 异常中断)
+  - 修复后: 8 卡片显示 $739,612.50 (ownBasic) / $1,264,208.80 (total) 等真实数字
+- **E2E**: 浏览器 DevTools console 验证 8 个 card 全部 `[lib] cards found: 8` + 8 个 field 全有值
+- **改 scenario_library 页面必查**:
+  - `static/scenario_library.js` 4 个端点 (loadList / loadDetail / shareUrl / goCompare)
+  - `static/scenario_library.html` script 引用加 cache-busting
+
+
 ### 2.17 储蓄奖金 (Savings Bonus, PR #73 拍板, 2026-08-06)
 
 **业务 (用户 2026-08-06 拍板原话)**:

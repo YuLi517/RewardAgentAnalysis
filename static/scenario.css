@@ -45,6 +45,8 @@ body {
 /* --- 大卡片 (左侧 4 区) --- */
 .glow-card {
   position: relative;
+  display: flex;                          /* v1.0.18: flex column, 让 .glow-inner stretch 填满整个 content area (修 v1.0.11 grid stretch 后底部露 conic-gradient bug) */
+  flex-direction: column;
   border-radius: 12px;
   padding: 3px;                          /* 光带宽度 = padding, 3px 明显 */
   background: #1a1a2e;                   /* fallback */
@@ -73,6 +75,9 @@ body {
 .glow-card .glow-inner {
   position: relative;
   z-index: 1;
+  flex: 1;                                /* v1.0.18: stretch 填满 .glow-card content area (修 grid stretch 后底部留白露 conic-gradient) */
+  display: flex;
+  flex-direction: column;
   background: #1a1a2e;
   border-radius: 10px;                    /* 比外层小 2px (padding), 露出光带 */
   padding: 12px 16px;

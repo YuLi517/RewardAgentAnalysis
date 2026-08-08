@@ -21,6 +21,12 @@ def collect_period_pvs_windowed(scenario: Scenario, root_bfs: int, month: int,
       - 节点 own PV = 1500 在 join_week 那一周, 后续 4 周 0 (续费 100 不命中 4 档)
       - month = m 时, 只算 join_month == m 的节点 (4 周窗口整月)
       - 业务上: 父节点 m 月收集体是 m 月新加入 (join_month=m) 的 L3+ 子孙 own 1500
+
+    v1.0.19a 关键修复: 窗口检查只对有 own PV 的节点 (L3+ 新成员) 生效
+      - 之前 (v1.0.19 之前): 对每个递归节点都做 month-join_month >= 1 检查
+        → M1+ 时 join_month=0 的中间层节点 (L1-L2) 被过滤, 递归中断, M1+ teamBonus=0
+      - 现在 (v1.0.19a): 中间层节点 (L0-L2, join_month=0) 不检查直接递归
+        只在收集 own PV 时检查 month == node.join_month (4 周窗口整月)
     """
     cc = scenario.commission_config
     _, children_map = get_nodes_and_children(scenario)
@@ -29,14 +35,12 @@ def collect_period_pvs_windowed(scenario: Scenario, root_bfs: int, month: int,
 
     def _walk(bfs_id: int):
         node = nodes[bfs_id]
-        # 4 周窗口检查: month - join_month < 1 (PR #71 业务)
-        if month - node["join_month"] >= 1:
-            return  # 出窗口
         # 节点 own PV = weekly_period_pv[node.join_week][bfs_id]
         own = weekly_period_pv[node["join_week"]].get(bfs_id, 0) if 0 <= node["join_week"] < len(weekly_period_pv) else 0
-        if own > 0:
+        # v1.0.19a: 4 周窗口检查只对有 own PV 的节点生效 (中间层不检查, 直接递归)
+        if own > 0 and month == node["join_month"]:
             pvs.append(own)
-        # 5 子区 (slot 1-5) 都递归
+        # 5 子区 (slot 1-5) 都递归 (中间层不检查窗口, 保证递归能走到叶子)
         for c in children_map.get(bfs_id, []):
             if nodes[c]["slot_line_id"] <= 5:
                 _walk(c)
@@ -111,12 +115,11 @@ def compute_team_bonus_table_for_month(scenario: Scenario, month: int) -> Dict[i
     result: Dict[int, Decimal] = {}
 
     def _walk_collect(bfs_id: int, pvs: List[int]):
-        """递归: 4 周窗口内 own period_pv 收集"""
+        """递归: 4 周窗口内 own period_pv 收集 (v1.0.19a: 中间层不检查窗口, 只对有 own PV 的节点检查)"""
         node = nodes[bfs_id]
-        if month - node["join_month"] >= 1:
-            return  # 出窗口
         own = weekly_period_pv[node["join_week"]].get(bfs_id, 0) if 0 <= node["join_week"] < len(weekly_period_pv) else 0
-        if own > 0:
+        # v1.0.19a: 窗口检查移到 own>0 时 (中间层节点不检查, 递归能走到叶子)
+        if own > 0 and month == node["join_month"]:
             pvs.append(own)
         for c in children_map.get(bfs_id, []):
             if nodes[c]["slot_line_id"] <= 5:

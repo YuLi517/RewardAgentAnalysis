@@ -210,25 +210,6 @@ body {
   cursor: help;
 }
 
-/* === Canvas === */
-.canvas-wrap {
-  background: #1a1a2e;
-  border-radius: 8px;
-  padding: 8px;
-}
-#tree-canvas {
-  background: #0a0a14;
-  border-radius: 4px;
-  display: block;
-  width: 100%;
-}
-.canvas-hint {
-  font-size: 11px;
-  color: #758A99;
-  margin-top: 4px;
-  text-align: center;
-}
-
 /* === 按钮 === */
 .p3-submit-row { display: flex; gap: 8px; margin-top: 8px; }
 .p3-submit-btn, .p3-preview-btn {

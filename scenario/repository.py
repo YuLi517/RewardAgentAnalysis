@@ -1,4 +1,4 @@
-"""ScenarioRepository — 持久化 Scenario ↔ DB row (PR3 Task 3)
+"""ScenarioRepository — 持久化 Scenario ↔ DB row (PR3 Task 3 + v1.0.14 locks)
 
 业务 (P1 PR3, 2026-08-07):
   - 大重构阶段 3: 运营系统 → 分析推理系统 (招商/路演实时计算器)
@@ -6,11 +6,17 @@
   - 客户路演: 调 4 组参数 → POST /api/scenarios → DB row → 下次 GET /api/scenarios/{id} 读回
   - cache 绑定到 id(scenario_instance) 不绑 row id (scenario/builder.py 已用 LRU)
 
+v1.0.14 业务:
+  - save 时预计算 one_gen_four_locks (4 子锁定), 写 DB one_gen_four_locks_json 字段
+  - load 时读 locks 字段, 设到 scenario._db_locks_json
+  - lazy backfill: 旧 scenario 字段 NULL, 首次 GET 触发 backfill (算 + UPDATE)
+
 设计要点:
   1. ORM ↔ dataclass 转换: JSON 字段要 int key 转换 (JSON 标准 str key)
   2. 派生字段 (total_target/total_weeks/total_months) 存表, load 时复用 (避免重算)
   3. SQLAlchemy 2.x 风格 (select 而不是 query)
   4. list_all 按 id 升序 (跟 ORM 默认 order_by 一致, 客户看时间序)
+  5. v1.0.14: locks 字段, 1代4 业务 4 子关系 持久化 (避免每次 BFS 重算可能出错)
 """
 from __future__ import annotations
 import datetime
@@ -106,6 +112,8 @@ def _orm_to_dataclass(row: ScenarioORM) -> Scenario:
     # 用 build_scenario 重建 (内部会跑 builder + 算 total_weeks/months, 但 LRU 缓存命中)
     from scenario.builder import build_scenario
     s = build_scenario(ts, g, r, cc, name=row.name, scenario_id=row.id)
+    # v1.0.14: 读 locks JSON 字段, 设到 scenario instance 供 locks.get_lock_for_node 用
+    s._db_locks_json = row.one_gen_four_locks_json
     return s
 
 
@@ -194,6 +202,7 @@ class ScenarioRepository:
             total_target=scenario.total_target,
             total_weeks=scenario.total_weeks,
             total_months=scenario.total_months,
+            one_gen_four_locks_json=scenario._db_locks_json if hasattr(scenario, "_db_locks_json") else None,
         )
         self.session.add(row)
         self.session.commit()
@@ -205,6 +214,9 @@ class ScenarioRepository:
         """load DB row by id, 转 dataclass, None if 不存在
 
         P1.6 Task 4: 类级别 _process_cache 优先查, 命中省 scenario.load() 100ms
+
+        v1.0.14: lazy backfill locks (旧 134 scenario 没 one_gen_four_locks_json 字段)
+                 首次 GET 触发 backfill (算 + UPDATE), 后续直接读
         """
         # 1. 查类级别 cache (跨请求复用)
         cached = ScenarioRepository._process_cache.get(scenario_id)
@@ -216,6 +228,14 @@ class ScenarioRepository:
             return None
         s = _orm_to_dataclass(row)
         if s is not None:
+            # v1.0.14: lazy backfill (旧 scenario 字段 NULL 时)
+            if row.one_gen_four_locks_json is None:
+                from scenario.locks import compute_one_gen_four_locks, serialize_locks
+                locks = compute_one_gen_four_locks(s)
+                json_str = serialize_locks(locks)
+                row.one_gen_four_locks_json = json_str
+                self.session.commit()
+                s._db_locks_json = json_str
             ScenarioRepository._process_cache.set(scenario_id, s)
         return s
 

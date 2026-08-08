@@ -545,6 +545,13 @@ class Scenario(Base):
     total_weeks: Mapped[int] = mapped_column(Integer, nullable=False)
     total_months: Mapped[int] = mapped_column(Integer, nullable=False)
 
+    # ============== v1.0.14 1代4 4子锁定 (1 列, 可空) ==============
+    # 业务: 每个父节点 (非叶) 在凑齐 4 子时刻, 4 个 bfs_id + m_first 锁定到 JSON
+    #       1代4 计算 = 查表, 不动态 BFS (避免每次重算可能出错)
+    # 格式: {"locks": {bfs_id: {"subs": [4 bfs_ids], "m_first": int}}, "version": 1}
+    # nullable=True: 旧 134 个 scenario 没这字段, 首次 GET 时 lazy backfill
+    one_gen_four_locks_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     def to_dict(self) -> dict:
         """侧栏列表 / 详情页用的字段拍平 (含 JSON 反序列化)
         业务注意: JSON object key 总是 string, 但 TreeShape/Growth 业务字段要求 int key,

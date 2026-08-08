@@ -148,6 +148,11 @@ def create_scenario(body: ScenarioIn, db: Session = Depends(get_db)) -> Dict[str
         horizontal_leader_tiers=_int_keys(cc_data["horizontal_leader_tiers"]),
     )
     s = build_scenario(ts, g, r, cc, name=body.name)
+    # v1.0.14: 预计算 1代4 4 子锁定 (1 次 BFS 算全网, 写 DB JSON 字段)
+    # 业务: 1代4 计算 = 查表 locks, 不再每次 BFS (避免出错 + 性能)
+    from scenario.locks import compute_one_gen_four_locks, serialize_locks
+    locks = compute_one_gen_four_locks(s)
+    s._db_locks_json = serialize_locks(locks)
     repo = ScenarioRepository(db)
     scenario_id = repo.save(s)
     return {"id": scenario_id, "name": body.name}

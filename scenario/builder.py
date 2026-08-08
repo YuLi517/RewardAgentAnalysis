@@ -21,7 +21,7 @@ def _build_bfs_tree(tree_shape: TreeShape, growth: Optional[Growth] = None) -> D
     nodes: Dict[int, dict] = {}
     layer_counts = tree_shape.layer_counts
     total = sum(layer_counts.values())
-    fork_max = {"binary": 2, "four_way": 4, "eight_way": 8}[tree_shape.fork_type]
+    fork_max = {"binary": 2, "ternary": 3, "four_way": 4, "eight_way": 8}[tree_shape.fork_type]
     if growth is None:
         n_per_region_per_week = 9
         n_regions = 4
@@ -35,10 +35,10 @@ def _build_bfs_tree(tree_shape: TreeShape, growth: Optional[Growth] = None) -> D
     nodes[0] = {"bfs_id": 0, "level": 0, "parent_bfs": -1, "slot_line_id": 0,
                 "region_id": 0, "join_week": 0, "join_month": 0, "color_index": 0}
 
-    # L1: 按 fork_type 决定 L1 父数
-    if tree_shape.fork_type == "binary":
-        l1_n = 4
-    elif tree_shape.fork_type == "four_way":
+    # L1: 按 fork_type 决定 L1 父数 (业务规则: 4 大区固定, 不管几叉)
+    #   binary / ternary / four_way → 4 大区
+    #   eight_way → 8 大区
+    if tree_shape.fork_type in ("binary", "ternary", "four_way"):
         l1_n = 4
     else:
         l1_n = 8

@@ -102,6 +102,8 @@ from repository import SessionRepository
 #   - skill_2 / skill_5_1 / skill_5_2 相关代码 + Tree_2ary.json 都已删除
 TREE_PATHS: Dict[str, str] = {
     "skill_5_3": os.path.join(os.path.dirname(os.path.abspath(__file__)), "json", "Tree_empty_5_3.json"),
+    # ★ v1.0.7 2026-08-08: 新增 ternary (3 叉) 支持, 跟 binary/four_way 算法对齐 (PR #18/22)
+    "skill_3": os.path.join(os.path.dirname(os.path.abspath(__file__)), "json", "Tree_empty_3.json"),
 }
 # /api/tree/render 不带 skill 时默认 fallback
 # ★ 2026-07-14 v8: 默认 skill_5_3 (5 叉演示树) — 业务主线
